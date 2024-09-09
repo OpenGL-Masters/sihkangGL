@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/Users/sihwan/Programming/GL/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++   -g -std=gnu++17 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -o CMakeFiles/cmake_project_example.dir/src/main.cpp.o -c /Users/sihwan/Programming/GL/cmake_project_example/src/main.cpp",
+  "file": "/Users/sihwan/Programming/GL/cmake_project_example/src/main.cpp",
+  "output": "CMakeFiles/cmake_project_example.dir/src/main.cpp.o"
+}
+]
