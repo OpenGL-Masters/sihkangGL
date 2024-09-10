@@ -246,4 +246,7 @@ In this flow, we can add functions for graphics:
 
    If the window size changes, you must call `glViewport()` again to reset the viewport size.
 
+
+then, we can get this window.
+![Hello openGL window](/attachedFiles/hello_openGL.png)
 ---
