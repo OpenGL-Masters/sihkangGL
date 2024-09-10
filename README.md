@@ -1,8 +1,9 @@
 # Learning openGL
 
 ---
+<details>
+  <summary># [W01] cmake_project_example</summary>
 
-# [W01] cmake_project_example
 - I learned how to set up OpenGL on an M1 MacBook.
 - CMake will be used for configuring and building projects.
 - I will create a `CMakeLists.txt` file and configure and build the project using the command palette in VSCode.
@@ -68,14 +69,11 @@ In this class, I use the command palette for "CMake: Configure" and "CMake: Buil
 In our source code, `main.cpp`, we print "Hello, World!" to stdout. When we execute the built executable, we can see "Hello, World!" printed in the console.
 
 
----
-
-# [W02] 
-- 
-
-
+</details>
 
 ---
+<details>
+<summary> # [W02] </summary>
 ## 외부라이브러리를 cmake로 포함시키기.
 
 ## GLFW DEPENDENCY 추가
@@ -85,3 +83,7 @@ In our source code, `main.cpp`, we print "Hello, World!" to stdout. When we exec
 
 이를 위해 GLFW가 필요함.
 
+
+</details>
+
+---
