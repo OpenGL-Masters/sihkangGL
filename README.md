@@ -71,8 +71,11 @@ In our source code, `main.cpp`, we print "Hello, World!" to stdout. When we exec
 
 </details>
 
+---
+
 <details>
 <summary> # [W02] </summary>
+
 ## including external library by using cmake
 
 ## add GLFW DEPENDENCY 
@@ -84,6 +87,7 @@ it will be included by cmake. It is easy to connect to our project.
 
 ### At cmake file to add external library dependency
 <details><summary> Dependency.cmake file </summary>
+
 ```
 # include on below means we want to add a external project.
 # this time, include can help for us to use a ExternalProject_Add feature.
@@ -116,6 +120,7 @@ ExternalProject_Add(
 set(DEP_LIST ${DEP_LIST} dep_glfw)
 set(DEP_LIBS ${DEP_LIBS} glfw3)
 ```
+
 </details>
 
 if you want to include external libraries, Separate the cmake file CMakeLists.txt and Dependency.cmake. it will be more useful to control the external and the internal(my project).
@@ -141,6 +146,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_LIBS})
 On CmakeLists.txt, we can set the information about window.
 
 ```
+
 # glfw window setting information
 set(WINDOW_NAME "Hello, OpenGL!")
 set(WINDOW_WIDTH 960)
@@ -156,11 +162,13 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 
 # Dependency files (${DEP_LIST}) have to be built before the my project.
 add_dependencies(${PROJECT_NAME} ${DEP_LIST})
+
 ```
 
 as i mentioned, I've used macOS. it need to explicitly link the framework we need.
 
 on dependency.cmake,
+
 ```
 if (APPLE)
     find_library(COCOA_FRAMEWORK Cocoa)
@@ -251,6 +259,7 @@ this function set the window that will be draw.
 width, height means the window size.
 
 if the window size was changed, glViewport should call to set the window again.
+
 </details>
 
 ---
