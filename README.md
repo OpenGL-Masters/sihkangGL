@@ -250,3 +250,119 @@ In this flow, we can add functions for graphics:
 then, we can get this window.
 ![Hello openGL window](/attachedFiles/hello_openGL.png)
 ---
+
+<details><summary> [W03] </summary>
+
+# Graphics Pipeline
+- **Application**: The application provides the vertex locations and colors that we want to draw. In 3D graphics, we generally draw pictures using triangles. In this stage, OpenGL functions are called to handle drawing. After this step, the GPU will be used.
+
+- **Geometry**: This stage processes vertex data and defines vertex locations. It determines how the triangle's location is perceived from a certain camera angle.
+
+- **Rasterization**: Converts vertices into pixels.
+
+- **Pixel**: Processes individual pixels and defines their color.
+
+## Programmable Shader
+GLSL (OpenGL Shading Language) is used for GPU programming and is available from OpenGL 3.3 core profile. We need to write the shader code directly.
+
+- **Vertex Shader**: Calculates information for each vertex.
+- **Fragment Shader**: Calculates information for each pixel.
+
+## OpenGL Shader
+We write the code for vertex and fragment shaders and then build the program. Additionally, there is a way to build shaders before loading using SPIR-V (not covered in this class).
+
+## Shader Code Loading
+- Read the shader code from a file.
+- Create a shader object and set the shader code.
+- Compile the shader.
+- If compilation fails, report the error.
+
+## In `src/common.h`
+This header file contains commonly used functions.
+
+### `std::optional<>`
+
+```cpp
+std::optional<std::string> LoadTextFile(const std::string &filename);
+```
+
+`std::optional<>` is a feature introduced in C++17. It provides a way to handle variables that might not have a value. You can check whether the variable has a value using the `has_value()` function.
+
+## Shader Class Design
+There is an OpenGL shader object. When an instance is created, it takes a filename for loading. If instance creation fails, we need to free the memory. This is managed using C++11 smart pointers.
+
+### Smart Pointer?
+Smart pointers manage memory automatically (RAII). Explicit deletion is not needed.
+
+- **`std::unique_ptr<>`**: Manages a memory block exclusively. When the memory goes out of scope, it is automatically deleted by the destructor. There is only one owner of the memory, and ownership cannot be copied. Use move semantics to transfer ownership.
+
+- **`std::shared_ptr<>`**: Shares ownership of the memory.
+
+- **`std::weak_ptr<>`**: Allows access to memory without owning it.
+
+1. Constructor is private to prevent direct instantiation. Only `CreateFromFile()` can create an instance. Use `CreateFromFile` to create a shader object.
+
+2. No `set()` function. Shader data is managed within the shader object and is protected.
+
+```cpp
+ShaderUPtr Shader::CreateFromFile(const std::string& filename, GLenum shaderType)
+{
+    auto shader = ShaderUPtr(new Shader());
+    if (!shader->LoadFile(filename, shaderType))
+        return nullptr;
+    return std::move(shader);
+}
+```
+
+In the above code, we allocate memory for the shader using a smart pointer. Then, we load the shader file. If loading fails, we return `nullptr` to delete the allocated memory. Otherwise, we return the shader memory by using the move function to transfer ownership.
+
+```cpp
+bool Shader::LoadFile(const std::string &filename, GLenum shaderType)
+{
+    auto result = LoadTextFile(filename);
+    if (!result.has_value()) // Checks if the optional has a value.
+        return false;
+
+    auto &code = result.value();
+    const char *codePtr = code.c_str();
+    int32_t codeLength = static_cast<int32_t>(code.length());
+
+    // Create and compile shader
+    m_shader = glCreateShader(shaderType);
+    glShaderSource(m_shader, 1, &codePtr, &codeLength);
+    glCompileShader(m_shader);
+
+    // Check for compile errors
+    int success = 0;
+    glGetShaderiv(m_shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        char infoLog[1024];
+        glGetShaderInfoLog(m_shader, 1024, nullptr, infoLog);
+        SPDLOG_ERROR("Failed to compile shader: \"{}\"", filename);
+        SPDLOG_ERROR("Reason: {}", infoLog);
+        return false;
+    }
+    return true;
+}
+```
+
+`Shader::LoadFile` is used to load the shader file. If loading the shader file using the `LoadTextFile` function fails, it returns `false`.
+
+After `LoadTextFile` is used, the shader source code information is provided to OpenGL functions.
+
+We then compile the shader code written in GLSL for use in our program. If the compilation is successful, it returns `true`. Otherwise, it returns an error log and `false`.
+
+In this function, we create a shader object and provide it with the shader source code.
+
+- **`glCreateShader`**: Creates an OpenGL shader object and returns an integer ID for the shader.
+- **`glShaderSource`**: Sets the GLSL source code to the OpenGL shader object.
+- **`glCompileShader`**: Compiles the shader source code.
+- **`glGetShaderiv`**: Retrieves information about the shader, such as its compile status.
+- **`glGetShaderInfoLog`**: Retrieves the compilation error log for the shader.
+- **`glDeleteShader`**: Deletes the shader object.
+
+---
+
+</details>
+
