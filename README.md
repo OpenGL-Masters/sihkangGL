@@ -1,6 +1,5 @@
 # Learning openGL
 
----
 <details>
   <summary># [W01] cmake_project_example</summary>
 
@@ -70,8 +69,6 @@ In our source code, `main.cpp`, we print "Hello, World!" to stdout. When we exec
 
 
 </details>
-
----
 
 <details>
 <summary> # [W02] </summary>
@@ -196,13 +193,9 @@ endif()
    - Helps interact between other macOS frameworks by providing various data types and algorithms.
 
 
----
-
 ## Adding Glad Dependency
 
 You include it in the same way as GLFW, but you need to include the Glad header before GLFW. This is because GLFW relies on Glad for loading OpenGL function pointers.
-
----
 
 ## Booting the Window
 
@@ -250,8 +243,6 @@ In this flow, we can add functions for graphics:
 
 then, we can get this window.
 ![Hello openGL window](/attachedFiles/hello_openGL.png)
-
----
 
 </details>
 
@@ -365,8 +356,6 @@ In this function, we create a shader object and provide it with the shader sourc
 - **`glGetShaderiv`**: Retrieves information about the shader, such as its compile status.
 - **`glGetShaderInfoLog`**: Retrieves the compilation error log for the shader.
 - **`glDeleteShader`**: Deletes the shader object.
-
----
 
 </details>
 
