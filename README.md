@@ -195,6 +195,7 @@ endif()
    - Provides tools like basic data types, strings, dates, and collections (arrays, dictionaries, etc.).
    - Helps interact between other macOS frameworks by providing various data types and algorithms.
 
+
 ---
 
 ## Adding Glad Dependency
@@ -249,7 +250,10 @@ In this flow, we can add functions for graphics:
 
 then, we can get this window.
 ![Hello openGL window](/attachedFiles/hello_openGL.png)
+
 ---
+
+</details>
 
 <details><summary> [W03] </summary>
 
