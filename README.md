@@ -359,3 +359,204 @@ In this function, we create a shader object and provide it with the shader sourc
 
 </details>
 
+<details><summary> # [W03] </summary>
+
+## Program Class Design
+- vertex shader, fragment shader 를 연결한 pipeline program을 만들게 될 것.
+- 이 프로그램을 이용해서 최종적으로 그림을 그린다
+- 두 개의 쉐이더를 입력받아서 프로그램을 링크시킨다.
+- 링크에 성공하면 오픈지엘 프로그램 오브젝트를 생성
+- 실패하면 메모리 할당 해제
+
+openGL에서 **프로그램(program)**은 여러 쉐이더들의 관리를 위해 존재하는 컨테이너와 같은 존재. 프로그램에 각 쉐이더들을 링크해서 하나로 동작할 수 있게끔 하며, glUseProgram 함수를 통해 GPU에서 해당 프로그램을 실행할 수 있게 함.
+
+### openGL program functions
+1. **`glCreateProgram()`**  
+   - 새로운 프로그램 객체를 생성하고, 프로그램의 ID를 반환합니다.
+   - 예시: `GLuint programID = glCreateProgram();`
+
+2. **`glAttachShader(GLuint program, GLuint shader)`**  
+   - 특정 프로그램에 쉐이더 객체를 첨부합니다. 프로그램이 쉐이더를 가지고 있어야 이를 컴파일 후 링크할 수 있습니다. 여기서 첨부란, openGL의 프로그램이 쉐이더에 접근 가능하도록 참조시켜주는 과정을 의미하며 쉐이더 파일을 준비해주는 과정에 해당함. 여기서는 정상 동작 여부를 알지 못함.
+   - 예시: `glAttachShader(programID, vertexShaderID);`
+
+3. **`glLinkProgram(GLuint program)`**  
+   - 프로그램에 첨부된 쉐이더들을 링크하여 최종 프로그램을 만듭니다. 쉐이더가 제대로 컴파일되고, 프로그램 안에서 유효하게 연결된 상태여야 링크가 성공합니다. 앞서 첨부한 쉐이더가 정상적으로 컴파일되고, 쉐이더 간에 정상적으로 연결되어서 상호작용되는지 확인. 정상적으로 링크가 되는 것은 GPU에서 실행 가능한 상태.
+   - 예시: `glLinkProgram(programID);`
+
+4. **`glUseProgram(GLuint program)`**  
+   - 지정된 프로그램을 현재 OpenGL 컨텍스트에서 사용합니다. 이 프로그램을 사용하여 이후의 렌더링 작업이 이루어집니다.
+   - 예시: `glUseProgram(programID);`
+
+5. **`glGetProgramiv(GLuint program, GLenum pname, GLint *params)`**  
+   - 프로그램의 특정 상태나 정보를 가져옵니다. 예를 들어, 링크 상태를 확인할 수 있습니다.
+   - 예시: `glGetProgramiv(programID, GL_LINK_STATUS, &status);`
+
+6. **`glGetProgramInfoLog(GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog)`**  
+   - 프로그램의 정보 로그(컴파일 및 링크 과정 중 발생한 에러 또는 경고)를 가져옵니다.
+   - 예시: `glGetProgramInfoLog(programID, 512, NULL, infoLog);`
+
+7. **`glDetachShader(GLuint program, GLuint shader)`**  
+   - 프로그램에서 쉐이더를 분리합니다. 링크된 후에는 쉐이더를 분리해도 프로그램은 여전히 유효하게 남아있습니다.
+   - 예시: `glDetachShader(programID, vertexShaderID);`
+
+8. **`glDeleteProgram(GLuint program)`**  
+   - 프로그램 객체를 삭제합니다. 더 이상 사용하지 않을 때 이 함수를 호출하여 메모리를 정리할 수 있습니다.
+   - 예시: `glDeleteProgram(programID);`
+
+9. **`glValidateProgram(GLuint program)`**  
+   - 프로그램이 현재 컨텍스트 상태에서 유효한지 확인합니다. 이 함수는 프로그램을 디버그하거나 오류를 찾을 때 유용합니다.
+   - 예시: `glValidateProgram(programID);`
+
+10. **`glIsProgram(GLuint program)`**  
+    - 프로그램이 유효한 프로그램 객체인지 확인하는 함수입니다.
+    - 예시: `if (glIsProgram(programID)) { /* Program is valid */ }`
+
+이 함수들을 통해 프로그램을 생성, 컴파일, 링크, 사용, 삭제 등의 작업을 수행하며, GPU에서 쉐이더 프로그램을 관리하고 실행할 수 있습니다.
+
+앞서 했던 쉐이더 클래스와 거의 동일하게, 프로그램 클래스를 설계해보자.
+여러 개의 쉐이더를 링크할 수 있어야 하기 떄문에, 벡터 타입으로 받는다.
+벡터 타입은 힙 메모리에 데이터가 저장되어있고, 여러개가 될 수 있다는 것.
+-> & 를 붙여서 레퍼런스로 복사되는 오버헤드를 줄이자.
+
+쉐이더 인스턴스는 다른 프로그램 인스턴스에 재사용될 수 있음.
+-> ShaderPtr 이라는 쉐어드포인터 형태로 만들었음.
+
+유니크 포인터는 소유권이 단독으로만 존재할 수 있었지만, 쉐어드 포인터는 여럿이 공동으로 소유할 수 있음.
+
+```
+#include <memory>
+
+void test()
+{
+	std::shared_ptr<int> a = std::shared_ptr<int>(new int);
+	{
+		std::shared_ptr<int> b = a ;
+		*b += 1;
+		// scope 나가면서 그 메모리를 소유하고 있는 녀석이 몇개인지 확인함.
+	}
+	// 아래 스코프를 나가게 되면 소유하고 있는 녀석이 0개가 되어 free하게됨.
+}
+```
+
+쉐이더 클래스같은 경우엔, Shader::CreateFromFile에서 유니크 포인터를 리턴.
+이걸 쉐어드로 만들어야하는데, 유니크 -> 쉐어드는 쉽다.
+ShaderPtr shader = Shader::CreateFromFile();
+
+받는 녀석이 쉐어드 포인터면 자동적으로 형변환이 일어난다.
+
+a 도 b 도 동일한 메모리 주소값을 가지게 된다.
+
+## Refactoring by context class
+
+기능을 그대로 둔 채로 코드를 좀 더 보기좋게 구조화하는 과정.
+동작 하는 코드를 먼저 만들고 보기좋게 고치고. 반복.
+
+코드가 더 큰 규모로 불어나기 전에, 재정비하지 않으면 그 코드를 재사용하는데 어려움이 있을 수 이씅ㅁ.
+
+되는 기능을 먼저 작성하고 잘 돌아감을 확인하면, 보기좋게 정리하는 습관을 들이자.
+
+컨텍스트 클래스를 만들어서 리팩토링 해보도록 하자.
+- GLFW / OpenGL Context / GLAD 초기화
+- 그림을 그리기 위한 오픈지엘 오브젝트 생성(쉐이더, 프로그램)
+- 렌더링
+- 오픈지엘 오브젝트 제거
+- GLFW 종료 / 프로그램 종료
+openGL 오브젝트들을 관리하고 렌더링하는 코드를 분리할 것.
+
+### VAO VBO EBO
+Vertex Array Object: VBO, EBO 등 버퍼들에 대한 상태 및 속성을 저장하는 컨테이너
+Vertex Buffer Object: GPU로 전달해줄 버텍스 정보를 담는 버퍼.
+Element Buffer Object: 버텍스들 간의 정점 인덱스 정보를 전달해주는 버퍼.
+
+우선적으로 VAO를 생성한 뒤, 생성된 VAO를 현재 컨텍스트에서 사용하도록 바인드해준다.
+이후 VBO, EBO 를 생성하여 현재 컨텍스트에 바인드해준뒤, CPU 메모리에 올라와있는 버퍼 데이터들을 GPU로 보내는 작업을 진행한다.
+
+보내진 버퍼들에 대해서 GPU가 해석할 방법이 필요하다. 이를 glVertexAttribPointer라는 함수를 이용해 버퍼에 대한 정보를 전달해준뒤, 해당 버텍스의 어떤 속성을 렌더링할지 enable 시켜주는 glEnableVertexAttribArray 함수를 활성화.
+
+이후 사용이 완료된 VAO는 바인드 해제를 하여, 다른 VAO 렌더링에 영향을 주지 않도록 해준다.(현재 강의에서는 렌더링을 하나의 VAO로만 진행하여 해당 부분이 없음.)
+
+```c++
+GLuint vao;
+glGenVertexArrays(1, &vao);
+glBindVertexArray(vao);
+
+// Set up VBO
+GLuint vbo;
+glGenBuffers(1, &vbo);
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+
+// Set up EBO
+GLuint ebo;
+glGenBuffers(1, &ebo);
+glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+
+// Set up vertex attributes
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)offset);
+glEnableVertexAttribArray(0);
+
+// Unbind VAO (optional, for good practice)
+glBindVertexArray(0);
+```
+
+![intensive red dot](./attachedFiles/reddot.png)
+
+## 정점 입력
+정점의 위치를 입력하는 방식이 CPU의 데이터를 GPU로 옮기는 것도 필요하고, 데이터를 복사할 때 이 정점이 어떤 좌표계에 있는 점이냐 등 여러가지 정보를 필요로함.
+
+오픈지엘에서는 이를 아래와 같이 처리함.
+
+1. 정점 데이터 준비 -> 강의에서는 vertices, indices
+
+2. Vertex buffer obj(VBO) 준비
+glGenBuffer함수를 통해 VBO를 생성한다. VBO는 정점 데이터를 담은 버퍼 오브젝트로, 정점에 대한 다양한 데이터를 GPU가 접근 가능한 메모리에 저장해둔다. (position, normal, tangent, color, texture, coordinate 등의 정보가 VBO에 담길 수 있음.) GPU에 사용가능한 메모리 공간을 할당하고 그 공간을 가리키는 정수값을 리턴받음. 해당 버퍼를 현재 컨텍스트에서 사용하기 위해선 glBindBuffer 함수를 활용하여 바인드시켜주자.
+
+3. Vertex buffer obj 에 정점 데이터 입력
+- CPU memory 상에 있는 정점 데이터를 GPU로 옮기는 작업. (glBufferData)
+GPU에 메모리가 따로 존재한다. (비디오 메모리)
+거기에 정점 데이터를 복사해주는것
+
+4. Vertex Array obj(VAO) 준비
+우리의 정점 데이터의 구조를 알려주는 descriptor obj.
+각 정점은 몇 바이트로 구성되고, 정점 간에는 몇 바이트가 떨어져있는지, 정점의 0번 데이터는 어떤 사이즈의 데이터가 몇개 있는 형태인지. 데이터의 자료형, 차원 수 등 어떤속성으로 구성되어있는지 버퍼에 대한 정보를 담게된다. 그 중에서도 어떤 속성을 활성화하여 렌더링을 진행할지 세팅해줘야함. (by glVertexAttribPointer, glEnableVertexAttribArray)
+-> Program, VBO, VAO를 사용하여 그림을 그리게 될 것.
+삼각형을 그려보았따.
+![yello_triangle](./attachedFiles/yt.png)
+
+사각형 -> 삼각형 두개 합쳐서 그리면 되니 정점을 6개를 넘겨서 그려보자.
+하지만 이는 사각형을 그리기 위해선 4개만으로도 충분한데 두개나 더 써야하니 비효율적.
+직점 정점을 어떻게 사용하게할지 세팅하는, 정점을 재활용하기 위해 사용되는 EBO(index bufffer) 를 사용해보자.
+
+정점을 코너 포인트 4개만 선언을 하고 인덱스 배열을 추가해주자.
+인덱스 배열에 있는 것을 삼각형으로 묶어서 처리하게 될 것!
+
+마찬가지로 인덱스 버퍼로 사용할 멤버로 context 클래스에 추가해주기.
+이렇게 인덱스 버퍼를 통해 그림을 그리면 `glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0)` 함수를 사용하게 된다.
+
+![ys](./attachedFiles/ys.png)
+
+현재 바인딩된 VAO, VBO, EBO를 바탕으로 그림
+- 그려낼 기본 primitive 타입
+- 그리고자 하는 EBO 내 index 갯수
+- index 데이터 형
+- 그리고자 하는 EBO의 첫 데이터로부터의 오프셋
+
+버퍼 오브젝트를 좀더 효율적으로 사용하기 위해 리펙토링을 해보자.
+
+## buffer class design
+현재 우리가 사용하고 있는 버퍼는 VBO, EBO로 두 가지가 존재한다.
+이들은 동일하게 glGenBuffer, glBindBuffer, glBufferData 함수를 이용하기 때문에, 하나의 버퍼 클래스로 만들어서 사용하면 더 깔끔해질 것이다.
+
+
+## VertexLayout 클래스
+VAO는 버텍스 버퍼가 어떤 규격으로 이루어졌는지에 대한 정보를 들고있는데,
+버텍스 레이아웃이라는 버텍스 버퍼를 가지고 정보를 가지고 있는 클래스로 만들자.
+
+쉐이더 오브젝트 생성 / 소스 컴파일
+프로그램 오브젝트 생성 / 쉐이더 링크
+VAO : VBO의 구조에 대한 설명, 바인딩된 VBO, EBO 기억
+VBO : 정점 데이터를 GPU 메모리 상에 위치시킨 obj
+EBO : 인덱스데이터를 GPU 메모리 상에 위치시킨 obj
+
+</details>

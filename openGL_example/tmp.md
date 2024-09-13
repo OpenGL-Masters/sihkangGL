@@ -1,63 +1,109 @@
-## Shader Code Loading
-- 임의의 쉐이더 파일을 읽는다.
-- 쉐이더 오브젝트를 만들고 쉐이더를 읽어들인 쉐이더 코드를 세팅
-- 쉐이더 컴파일
-- 쉐이더 컴파일 결과 실패 시 에러 리포팅.
+# GLSL
 
-우선 프로젝트가 공통적으로 사용할 기능을 정의할 src/common.h 파일을 만들어보자.
+openGL Shader Language
+쉐이더: GPU 상에서 동작하는 그림을 그리기 위한 작은 프로그램
+정점별 / 픽셀 별 병렬 수행되어 성능을 높임
+GLSL: openGL에서 shader를 작성하기 위해 제공하는 c 기반 언어
+그 외의 대표적인 쉐이더 언어: HLSL(DirectX), Metal(metal), cg(nVidia가 제시한 쉐이더 언어, unity3D에서 사용)
 
-### optional <>
+## 대략적인 GLSL 구조
+
+```c
+#version version_number // predifine macro
+
+in type in_vaiable_name;
+
+out type out_variable_name;
+
+uniform type uniform_name;
+
+void main(){
+	// process input(s) and do some weird graphics stuff...
+	// output processed stuff to output variable
+	out_variable_name = weird_stuff_we_processed;
+}
+```
+
+in out uniform <- 한정자. 변수가 어떤 형태로 사용되는지 정보 제공.
+in: 쉐이더 프로그램의 인풋
+out: 쉐이더 프로그램의 아웃풋
+uniform: 항상 동일한 값으로 존재하는 const 같은 녀석
+
+또한 void main() {} 을 엔트리 포인트로 가진다. 여기서 아웃풋으로 나갈 변수에 값을 담아주어 결과를 출력하자
+vs, fs 모두 이런 형식으로 구성된다.
+
+## GLSL data type
+int, float, double, uint, bool
+* 벡터 타입: vexX(float형 벡터), bvecX(bool형 벡터), ivexX(int형 벡터), uvexX(uint형 벡터), dvecX(double형 벡터)
+X에는 2, 3, 4 사용 가능
+
+* 행렬 타입: matX, bmatX, imatX, umatX, dmatX
+동일하게 X에는 2, 3, 4 사용 가능. 위와 동일하게 기본자료형에 해당하는 행렬 타입이 존재.
+
+### vector
+- 벡터 원소 접근
+: .x / .y / .z / .w 인덱스로 각 벡터의 성분에 접근
+swizzling 가능. 얻어오고 싶은 인덱스를 연속으로 쓰기 가능 (.xyz => vec3 으로 리턴)
+이러한 swizzling 기능은 .rgba, .stpq에도 동일한 방식으로 적용됨.
 
 ```
-std::optional<std::string> LoadTextFile(const std::string &filename);
+vec2 someVec;
+vec4 differentVec = someVec.xyxx;
+vec3 anotherVec = differentVec.zyx;
+vec4 otherVec = someVec.xxxx + anotherVec.yxzy;
+```
+다양한 형식의 swizzling으로 편하게 벡터 표현이 가능하다.
+
+- 벡터 초기값 선언
+```
+vec2 vect = vec2(0.5, 0.7); // vec2생성자 사용
+vec4 result = vec4(vect, 0.0, 0.0); // 다른 벡터를 섞어서 사용 가능
+vec4 otherResult = vec4(result.xyz, 1.0) // 다른 벡터 swizzling + 섞어서 사용 
+
+```
+단 기본 자료형이 일치하는 (위에서는 float 값) 내에서 섞어서 사용 가능.
+
+## IN / OUT
+쉐이더의 인풋과 아웃풋이 무엇인지를 지정.
+모든 쉐이더는 용도에 맞는 입출력이 선언되어 있어야함.
+in, out: 쉐이더의 입출력을 가리키는 type qualifier.
+
+### Vertex shader
+각 정점 별로 설정된 vertex attribute를 입력받는다.
+몇 번째 attribute를 입력받을지에 대한 추가적인 설정을 할 수 있음.
+
+```
+layout (location = n )
 ```
 
-c++17 표준 라이브러리.
-LoadTextFile은 파일을 읽어오는 함수인데, 파일을 읽어오지 못하는 경우가 발생할 것.
-std::optional을 이용하면, 값이 들어있을 경우 정상적으로 사용 가능하지만, 값이 들어있지 않다면 안전하게 사용못하게 되는 효과.
+**반드시 정점의 출력 위치 gl_Position 값을 계산해줘야함.**
+이게 없으면 vs가 컴파일 되지 않는다.
 
-## Shader class design
-openGL Shader object를 가지고 있다.
-인스턴스가 생성될 때 로딩할 파일명을 입력받자.
-입력된 파일명으로부터 인스턴스 생성이 실패하면 메모리 할당 해제
-C++11 smartpointer 활용.
+- Rasterization: vertex shader의 출력값을 primitive에 맞게 보간하여 픽셀별 값으로 변환 (Rasterization)
+- Fragement shader: Rasterization을 거쳐 픽셀 별로 할당된 vertex shader 의 출력값이 입력됨. 각 픽셀의 실제 색상 값이 출력되어야함.
 
-### Smarpointer?
-사용하기 좀 더 안전한 포인터.
-메모리 할당을 받을 때, 소유권에 대한 정보가 있다.(RAII)
-명시적인 delete가 필요 없어짐.
+주의해야할 점은, vs의 아웃풋과 fs의 인풋은 동일해야함.
+vs -> out vec4 vertexColor
+그러면 fs -> in vec4 vertexColor 로 존재해야함.
+안그러면 링크에러 발생
 
-- std::unique_ptr<>: 해당 메모리 블록을 단독으로 소유
-소유권을 가진 인스턴스가 스코프 밖으로 벗어났을 때, 메모리 자동 해제
-인스턴스가 스코프를 벗어나게 되면, 할당되었던 메모리가 인스턴스 소멸자에 의해 delete 된다.
+gl_Position은 이미 기본적으로 설정된 변수라 안가져와도 되지만.
 
-유니크 포인터는 이름대로, 유일한 소유권으로만 존재할 수 있다. 둘 이상의 소유권을 가지지 않게 설계됨.
+uniform: 쉐이더에 전달 가능한 global value
+병렬로 수행되는 모든 쉐이더 쓰레드들이 동일한 값을 전달받는다.
 
-소유권은 복사되지 않기때문에, std::move를 통해 이동의 개념을 활용하여 a에 있던 소유권을 b로 이동시켜줘야함.
+변수 선언 앞에 uniform type qualifier를 사용하여 선언.
 
-- std::shared_ptr<>: 해당 메모리 블록의 소유권을 공유
-- std::weak_ptr<> : 해당 메모리 소유권은 없지만 접근은 가능.
+uniform variable 에 값을 입력하려면,
+glGetUniformLocation() 함수를 활용하여 program object로부터 uniform handle을 얻는다. 이후 program을 바인딩 한 후 **glUniform@@** 함수를 활용하여 입력
 
-아무튼, 쉐이더 클래스를 설계해보자.
-1. 생성자를 private한 이유
-CreateFromFile() 함수 외에 다른 방식의 shader 인스턴스 생성을 막기 위함.
+C++ 코드에서 그림을 그릴 때 uniform이라는 공통된 값들을 설정해준다.
+텍스쳐, 트랜스폼 메트릭스 등을 설정할때 사용하게 될 것이다.
 
-클래스를 생성할 수 있는 유일한 방법으로 static function call으로 한정한 것.
+## vertex attributes
+하나의 버텍스가 가지는 정보는 여러가지이다.
+: position, normal, tangent, color, texture coordinates, ...
+각각이 하나의 버텍스 속성이 된다.
 
-쉐이더를 생성하려면 CreateFromFile 함수를 이용하도록 하자.
+컬러 attribute를 넣어보자.
 
-2. Get()은 있는데 Set()은 없는 이유
-쉐이더 오브젝트의 생성 관리는 쉐이더 내부에서만 관리
-값의 노출을 최소화하기 위해.
-쉐이더 오브젝트는 쉐이더 내부에서만 관리되게끔 함.
-
-3. LoadFile()이 boolean 을 리턴하는 이유.
-생성에 실패할 경우 false를 리턴하기 위해서
-
-### OPENGL REMARKS
-- glCreateShader() : openGL shader obj 생성
-- glShaderSource() : shader에 소스 코드 설정
-- glCompileShader() : 읽어들인 소스코드 컴파일 진행
-- glGetShaderiv() : shader에 대한 정수형(i) 정보를 얻어옴.
-- glGetShaderInfoLog(): shader 에 대한 로그를 얻어옴. 컴파일 에러 얻어내는 용도로 사용
-- glDeleteShader() : shader object 제거.

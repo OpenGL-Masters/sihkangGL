@@ -1,9 +1,7 @@
-#include "common.h"
-#include "shader.h"
-
-#include <spdlog/spdlog.h>
-#include <glad/glad.h> // 반드시 GLFW 이전에 인클루드 해줘야 에러가 안남.
+#include "context.h"
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <spdlog/spdlog.h>
 
 void OnFramebufferSizeChange(GLFWwindow *window, int width, int height)
 {
@@ -80,16 +78,14 @@ int main()
 	auto glVersion = glGetString(GL_VERSION);
 	SPDLOG_INFO("OpenGL context version: {}", reinterpret_cast<const char*>(glVersion));
 
-
-	const char* vertexShaderPath = "/Users/sihwan/Programming/sihkang_GL/openGL_example/shader/simple.vs";
-	const char* fragmentShaderPath = "/Users/sihwan/Programming/sihkang_GL/openGL_example/shader/simple.fs";
-
-	auto vertexShader = Shader::CreateFromFile(vertexShaderPath, GL_VERTEX_SHADER);
-	auto fragmentShader = Shader::CreateFromFile(fragmentShaderPath, GL_FRAGMENT_SHADER);
-	SPDLOG_INFO("vertex shader id: {}", vertexShader->Get());
-	SPDLOG_INFO("fragment shader id: {}", fragmentShader->Get());
-
-
+	auto context = Context::Create();
+	if (!context)
+	{
+		SPDLOG_ERROR("failed to create context");
+		glfwTerminate();
+		return -1;
+	}
+	
 	// 윈도우 생성 직후에는 프레임 버퍼 변경 이벤트가 발생하지 않으므로 첫 호출은 수동으로 함.
 	OnFramebufferSizeChange(window, WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -107,16 +103,12 @@ int main()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		glfwPollEvents(); // 윈도우와 관련된 키보드, 마우스 이벤트 등을 감지하는. poll() 과 유사한 기능.
-
-		// 컬러 프레임버퍼 화면을 클리어할 색상 지정
-		glClearColor(0.0f, 0.1f, 0.2f, 0.0f);
-		
-		// 프레임 버퍼 클리어. 화면에 보이는 색상 버퍼를 클리어하자.
-		glClear(GL_COLOR_BUFFER_BIT);
+		context->Render();
 		glfwSwapBuffers(window);
+		glfwPollEvents(); // 윈도우와 관련된 키보드, 마우스 이벤트 등을 감지하는. poll() 과 유사한 기능.
 	}
-
+	context.reset();
+	
 	glfwTerminate();
 	return 0;
 }

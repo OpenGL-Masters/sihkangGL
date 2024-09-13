@@ -17,7 +17,12 @@ project(${PROJECT_NAME})
 add_executable(${PROJECT_NAME} 
 	src/main.cpp
 	src/common.cpp src/common.h 
-	src/shader.cpp src/shader.h)
+	src/shader.cpp src/shader.h
+	src/program.cpp src/program.h
+	src/context.cpp src/context.h
+	src/buffer.cpp src/buffer.h
+	src/vertex_layout.cpp src/vertex_layout.h
+	)
 
 
 # 외부 라이브러리를 cmake한 것을 include 하기.
