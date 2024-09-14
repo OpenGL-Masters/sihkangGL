@@ -249,30 +249,35 @@ then, we can get this window.
 <details><summary> [W03] </summary>
 
 # Graphics Pipeline
+
 - **Application**: The application provides the vertex locations and colors that we want to draw. In 3D graphics, we generally draw pictures using triangles. In this stage, OpenGL functions are called to handle drawing. After this step, the GPU will be used.
 
-- **Geometry**: This stage processes vertex data and defines vertex locations. It determines how the triangle's location is perceived from a certain camera angle.
+- **Geometry**: This stage processes vertex data and defines vertex positions. It determines how the triangle's location is perceived from a certain camera angle by transforming the geometry according to the camera's viewpoint.
 
-- **Rasterization**: Converts vertices into pixels.
+- **Rasterization**: Converts transformed vertices into fragments (potential pixels), turning geometric information into pixels.
 
-- **Pixel**: Processes individual pixels and defines their color.
+- **Pixel Processing**: Processes individual pixels and defines their color, often based on lighting, textures, or other effects.
 
 ## Programmable Shader
-GLSL (OpenGL Shading Language) is used for GPU programming and is available from OpenGL 3.3 core profile. We need to write the shader code directly.
 
-- **Vertex Shader**: Calculates information for each vertex.
-- **Fragment Shader**: Calculates information for each pixel.
+GLSL (OpenGL Shading Language) is used for GPU programming and is available from the OpenGL 3.3 core profile onward. We need to write the shader code directly.
+
+- **Vertex Shader**: Calculates information for each vertex, such as position, normals, and other per-vertex attributes.
+- **Fragment Shader**: Calculates information for each pixel, mainly determining its final color.
 
 ## OpenGL Shader
+
 We write the code for vertex and fragment shaders and then build the program. Additionally, there is a way to build shaders before loading using SPIR-V (not covered in this class).
 
 ## Shader Code Loading
+
 - Read the shader code from a file.
-- Create a shader object and set the shader code.
+- Create a shader object and assign the shader code to it.
 - Compile the shader.
 - If compilation fails, report the error.
 
 ## In `src/common.h`
+
 This header file contains commonly used functions.
 
 ### `std::optional<>`
@@ -284,20 +289,22 @@ std::optional<std::string> LoadTextFile(const std::string &filename);
 `std::optional<>` is a feature introduced in C++17. It provides a way to handle variables that might not have a value. You can check whether the variable has a value using the `has_value()` function.
 
 ## Shader Class Design
+
 There is an OpenGL shader object. When an instance is created, it takes a filename for loading. If instance creation fails, we need to free the memory. This is managed using C++11 smart pointers.
 
-### Smart Pointer?
+### Smart Pointers
+
 Smart pointers manage memory automatically (RAII). Explicit deletion is not needed.
 
-- **`std::unique_ptr<>`**: Manages a memory block exclusively. When the memory goes out of scope, it is automatically deleted by the destructor. There is only one owner of the memory, and ownership cannot be copied. Use move semantics to transfer ownership.
+- **`std::unique_ptr<>`**: Manages a memory block exclusively. When the object goes out of scope, it is automatically deleted by the destructor. There is only one owner of the memory, and ownership cannot be copied. Use move semantics to transfer ownership.
 
-- **`std::shared_ptr<>`**: Shares ownership of the memory.
+- **`std::shared_ptr<>`**: Shares ownership of the memory among multiple pointers. The memory is deleted when the last `shared_ptr` owning it is destroyed.
 
-- **`std::weak_ptr<>`**: Allows access to memory without owning it.
+- **`std::weak_ptr<>`**: Provides access to an object managed by a `shared_ptr` without increasing its reference count, preventing cyclic references.
 
-1. Constructor is private to prevent direct instantiation. Only `CreateFromFile()` can create an instance. Use `CreateFromFile` to create a shader object.
+1. The constructor is private to prevent direct instantiation. Only `CreateFromFile()` can create an instance. Use `CreateFromFile` to create a shader object.
 
-2. No `set()` function. Shader data is managed within the shader object and is protected.
+2. No `set()` function is provided. Shader data is managed within the shader object and is protected.
 
 ```cpp
 ShaderUPtr Shader::CreateFromFile(const std::string& filename, GLenum shaderType)
@@ -309,7 +316,7 @@ ShaderUPtr Shader::CreateFromFile(const std::string& filename, GLenum shaderType
 }
 ```
 
-In the above code, we allocate memory for the shader using a smart pointer. Then, we load the shader file. If loading fails, we return `nullptr` to delete the allocated memory. Otherwise, we return the shader memory by using the move function to transfer ownership.
+In the above code, we allocate memory for the shader using a smart pointer (`ShaderUPtr`, which is likely a type alias for `std::unique_ptr<Shader>`). Then, we load the shader file. If loading fails, we return `nullptr`, and the allocated memory is automatically cleaned up when the `unique_ptr` goes out of scope. Otherwise, we return the shader by using `std::move` to transfer ownership.
 
 ```cpp
 bool Shader::LoadFile(const std::string &filename, GLenum shaderType)
@@ -344,138 +351,106 @@ bool Shader::LoadFile(const std::string &filename, GLenum shaderType)
 
 `Shader::LoadFile` is used to load the shader file. If loading the shader file using the `LoadTextFile` function fails, it returns `false`.
 
-After `LoadTextFile` is used, the shader source code information is provided to OpenGL functions.
+After `LoadTextFile` is used, the shader source code is provided to OpenGL functions.
 
 We then compile the shader code written in GLSL for use in our program. If the compilation is successful, it returns `true`. Otherwise, it returns an error log and `false`.
 
 In this function, we create a shader object and provide it with the shader source code.
 
 - **`glCreateShader`**: Creates an OpenGL shader object and returns an integer ID for the shader.
-- **`glShaderSource`**: Sets the GLSL source code to the OpenGL shader object.
+- **`glShaderSource`**: Sets the GLSL source code in the OpenGL shader object.
 - **`glCompileShader`**: Compiles the shader source code.
 - **`glGetShaderiv`**: Retrieves information about the shader, such as its compile status.
 - **`glGetShaderInfoLog`**: Retrieves the compilation error log for the shader.
 - **`glDeleteShader`**: Deletes the shader object.
 
-</details>
-
-<details><summary> # [W03] </summary>
+---
 
 ## Program Class Design
-- vertex shader, fragment shader 를 연결한 pipeline program을 만들게 될 것.
-- 이 프로그램을 이용해서 최종적으로 그림을 그린다
-- 두 개의 쉐이더를 입력받아서 프로그램을 링크시킨다.
-- 링크에 성공하면 오픈지엘 프로그램 오브젝트를 생성
-- 실패하면 메모리 할당 해제
 
-openGL에서 **프로그램(program)**은 여러 쉐이더들의 관리를 위해 존재하는 컨테이너와 같은 존재. 프로그램에 각 쉐이더들을 링크해서 하나로 동작할 수 있게끔 하며, glUseProgram 함수를 통해 GPU에서 해당 프로그램을 실행할 수 있게 함.
+- We will make a pipeline program connected with a vertex shader and a fragment shader for rendering.
+- Enter the two shader files into the program and link them.
+- If linking succeeds, create an OpenGL program object; otherwise, free the memory.
 
-### openGL program functions
+In OpenGL, a **program object** is like a container to manage multiple shader files. Shader files should be linked to the program. Then we can operate just one program that controls many shaders. The GPU can execute this program using the `glUseProgram` function.
+
+### OpenGL Program Functions
+
 1. **`glCreateProgram()`**  
-   - 새로운 프로그램 객체를 생성하고, 프로그램의 ID를 반환합니다.
-   - 예시: `GLuint programID = glCreateProgram();`
+   - Creates a new program object and returns the program ID (an integer value).
+   - Example: `GLuint programID = glCreateProgram();`
 
 2. **`glAttachShader(GLuint program, GLuint shader)`**  
-   - 특정 프로그램에 쉐이더 객체를 첨부합니다. 프로그램이 쉐이더를 가지고 있어야 이를 컴파일 후 링크할 수 있습니다. 여기서 첨부란, openGL의 프로그램이 쉐이더에 접근 가능하도록 참조시켜주는 과정을 의미하며 쉐이더 파일을 준비해주는 과정에 해당함. 여기서는 정상 동작 여부를 알지 못함.
-   - 예시: `glAttachShader(programID, vertexShaderID);`
+   - Attaches the shader to a certain program. The program must have shaders attached before linking. In this case, 'attach' means pointing to the shader object's address so that the program can access it. At this moment, it doesn't know whether the shader has been compiled correctly.
+   - Example: `glAttachShader(programID, vertexShaderID);`
 
 3. **`glLinkProgram(GLuint program)`**  
-   - 프로그램에 첨부된 쉐이더들을 링크하여 최종 프로그램을 만듭니다. 쉐이더가 제대로 컴파일되고, 프로그램 안에서 유효하게 연결된 상태여야 링크가 성공합니다. 앞서 첨부한 쉐이더가 정상적으로 컴파일되고, 쉐이더 간에 정상적으로 연결되어서 상호작용되는지 확인. 정상적으로 링크가 되는 것은 GPU에서 실행 가능한 상태.
-   - 예시: `glLinkProgram(programID);`
+   - Links the attached shaders to create the final executable shader program. If the shaders are compiled and linked correctly, this function succeeds.
+   - It checks whether the attached shaders have any problems compiling or interacting with other shaders.
+   - If this function succeeds, the GPU can perform rendering.
+   - Example: `glLinkProgram(programID);`
 
 4. **`glUseProgram(GLuint program)`**  
-   - 지정된 프로그램을 현재 OpenGL 컨텍스트에서 사용합니다. 이 프로그램을 사용하여 이후의 렌더링 작업이 이루어집니다.
-   - 예시: `glUseProgram(programID);`
+   - Uses this program for the current OpenGL context. By using this program, rendering will be done according to the shaders linked within.
+   - Example: `glUseProgram(programID);`
 
 5. **`glGetProgramiv(GLuint program, GLenum pname, GLint *params)`**  
-   - 프로그램의 특정 상태나 정보를 가져옵니다. 예를 들어, 링크 상태를 확인할 수 있습니다.
-   - 예시: `glGetProgramiv(programID, GL_LINK_STATUS, &status);`
+   - Gets the program information and status, e.g., linking status.
+   - Example: `glGetProgramiv(programID, GL_LINK_STATUS, &status);`
 
 6. **`glGetProgramInfoLog(GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog)`**  
-   - 프로그램의 정보 로그(컴파일 및 링크 과정 중 발생한 에러 또는 경고)를 가져옵니다.
-   - 예시: `glGetProgramInfoLog(programID, 512, NULL, infoLog);`
+   - Retrieves the program information log (compilation or linking errors, warnings).
+   - Example: `glGetProgramInfoLog(programID, 512, NULL, infoLog);`
 
 7. **`glDetachShader(GLuint program, GLuint shader)`**  
-   - 프로그램에서 쉐이더를 분리합니다. 링크된 후에는 쉐이더를 분리해도 프로그램은 여전히 유효하게 남아있습니다.
-   - 예시: `glDetachShader(programID, vertexShaderID);`
+   - Detaches the shader from the program. The shader and program are not deleted—just detached from each other.
+   - Example: `glDetachShader(programID, vertexShaderID);`
 
 8. **`glDeleteProgram(GLuint program)`**  
-   - 프로그램 객체를 삭제합니다. 더 이상 사용하지 않을 때 이 함수를 호출하여 메모리를 정리할 수 있습니다.
-   - 예시: `glDeleteProgram(programID);`
+   - Deletes the program object to free the memory.
+   - Example: `glDeleteProgram(programID);`
 
 9. **`glValidateProgram(GLuint program)`**  
-   - 프로그램이 현재 컨텍스트 상태에서 유효한지 확인합니다. 이 함수는 프로그램을 디버그하거나 오류를 찾을 때 유용합니다.
-   - 예시: `glValidateProgram(programID);`
+   - Checks whether the program is valid in the current context. This function is useful for finding errors or debugging.
+   - Example: `glValidateProgram(programID);`
 
 10. **`glIsProgram(GLuint program)`**  
-    - 프로그램이 유효한 프로그램 객체인지 확인하는 함수입니다.
-    - 예시: `if (glIsProgram(programID)) { /* Program is valid */ }`
+    - Checks whether the program is a valid object.
+    - Example: `if (glIsProgram(programID)) { /* Program is valid */ }`
 
-이 함수들을 통해 프로그램을 생성, 컴파일, 링크, 사용, 삭제 등의 작업을 수행하며, GPU에서 쉐이더 프로그램을 관리하고 실행할 수 있습니다.
+Shader instances can be used by another program instance. So, they are designed using `ShaderPtr` formed of `shared_ptr`. A `unique_ptr` has only one owner, but a `shared_ptr` can have multiple owners.
 
-앞서 했던 쉐이더 클래스와 거의 동일하게, 프로그램 클래스를 설계해보자.
-여러 개의 쉐이더를 링크할 수 있어야 하기 떄문에, 벡터 타입으로 받는다.
-벡터 타입은 힙 메모리에 데이터가 저장되어있고, 여러개가 될 수 있다는 것.
--> & 를 붙여서 레퍼런스로 복사되는 오버헤드를 줄이자.
+If the pointer variable's data type is `shared_ptr`, a `unique_ptr` can be moved into a `shared_ptr` to share ownership.
 
-쉐이더 인스턴스는 다른 프로그램 인스턴스에 재사용될 수 있음.
--> ShaderPtr 이라는 쉐어드포인터 형태로 만들었음.
+## Refactoring by Context Class
 
-유니크 포인터는 소유권이 단독으로만 존재할 수 있었지만, 쉐어드 포인터는 여럿이 공동으로 소유할 수 있음.
+**Refactoring** means improving the code to make it easier to understand and to have a clear structure.
 
-```
-#include <memory>
+Make it a habit to write code that works correctly first, then refactor to improve its structure. If the code gets bigger, it might be hard to reuse the code without proper structuring.
 
-void test()
-{
-	std::shared_ptr<int> a = std::shared_ptr<int>(new int);
-	{
-		std::shared_ptr<int> b = a ;
-		*b += 1;
-		// scope 나가면서 그 메모리를 소유하고 있는 녀석이 몇개인지 확인함.
-	}
-	// 아래 스코프를 나가게 되면 소유하고 있는 녀석이 0개가 되어 free하게됨.
-}
-```
+### Context Class Design
 
-쉐이더 클래스같은 경우엔, Shader::CreateFromFile에서 유니크 포인터를 리턴.
-이걸 쉐어드로 만들어야하는데, 유니크 -> 쉐어드는 쉽다.
-ShaderPtr shader = Shader::CreateFromFile();
+- Initialize GLFW / OpenGL Context / GLAD.
+- Create objects to draw a picture (shader, program).
+- Render.
+- Free OpenGL objects to release memory.
+- Terminate GLFW / program.
 
-받는 녀석이 쉐어드 포인터면 자동적으로 형변환이 일어난다.
+**Goals of the context class**: Manage the OpenGL objects and rendering code.
 
-a 도 b 도 동일한 메모리 주소값을 가지게 된다.
+### VAO, VBO, EBO
 
-## Refactoring by context class
+- **Vertex Array Object (VAO)**: Like a container for VBO and EBO buffer statuses and attribute configurations.
+- **Vertex Buffer Object (VBO)**: A buffer containing vertex information like position, color, etc., which is delivered to the GPU.
+- **Element Buffer Object (EBO)**: A buffer delivering information about vertex indices.
 
-기능을 그대로 둔 채로 코드를 좀 더 보기좋게 구조화하는 과정.
-동작 하는 코드를 먼저 만들고 보기좋게 고치고. 반복.
+1. Create VAO -> Bind it.
+2. Create VBO / EBO -> Bind them -> Use `glBufferData` to deliver data to the GPU.
+3. Let the GPU know about the delivered buffers. The `glVertexAttribPointer` function gives the GPU information about the buffer, and `glEnableVertexAttribArray` enables rendering with the delivered attributes.
 
-코드가 더 큰 규모로 불어나기 전에, 재정비하지 않으면 그 코드를 재사용하는데 어려움이 있을 수 이씅ㅁ.
+After use, unbind the VAO to allow for rendering with other VAOs.
 
-되는 기능을 먼저 작성하고 잘 돌아감을 확인하면, 보기좋게 정리하는 습관을 들이자.
-
-컨텍스트 클래스를 만들어서 리팩토링 해보도록 하자.
-- GLFW / OpenGL Context / GLAD 초기화
-- 그림을 그리기 위한 오픈지엘 오브젝트 생성(쉐이더, 프로그램)
-- 렌더링
-- 오픈지엘 오브젝트 제거
-- GLFW 종료 / 프로그램 종료
-openGL 오브젝트들을 관리하고 렌더링하는 코드를 분리할 것.
-
-### VAO VBO EBO
-Vertex Array Object: VBO, EBO 등 버퍼들에 대한 상태 및 속성을 저장하는 컨테이너
-Vertex Buffer Object: GPU로 전달해줄 버텍스 정보를 담는 버퍼.
-Element Buffer Object: 버텍스들 간의 정점 인덱스 정보를 전달해주는 버퍼.
-
-우선적으로 VAO를 생성한 뒤, 생성된 VAO를 현재 컨텍스트에서 사용하도록 바인드해준다.
-이후 VBO, EBO 를 생성하여 현재 컨텍스트에 바인드해준뒤, CPU 메모리에 올라와있는 버퍼 데이터들을 GPU로 보내는 작업을 진행한다.
-
-보내진 버퍼들에 대해서 GPU가 해석할 방법이 필요하다. 이를 glVertexAttribPointer라는 함수를 이용해 버퍼에 대한 정보를 전달해준뒤, 해당 버텍스의 어떤 속성을 렌더링할지 enable 시켜주는 glEnableVertexAttribArray 함수를 활성화.
-
-이후 사용이 완료된 VAO는 바인드 해제를 하여, 다른 VAO 렌더링에 영향을 주지 않도록 해준다.(현재 강의에서는 렌더링을 하나의 VAO로만 진행하여 해당 부분이 없음.)
-
-```c++
+```cpp
 GLuint vao;
 glGenVertexArrays(1, &vao);
 glBindVertexArray(vao);
@@ -502,61 +477,191 @@ glBindVertexArray(0);
 
 ![intensive red dot](./attachedFiles/reddot.png)
 
-## 정점 입력
-정점의 위치를 입력하는 방식이 CPU의 데이터를 GPU로 옮기는 것도 필요하고, 데이터를 복사할 때 이 정점이 어떤 좌표계에 있는 점이냐 등 여러가지 정보를 필요로함.
+## Vertex Input
 
-오픈지엘에서는 이를 아래와 같이 처리함.
+Several kinds of information are needed for vertices: data transferring from CPU to GPU, vertex coordinates, etc.
 
-1. 정점 데이터 준비 -> 강의에서는 vertices, indices
+1. **Prepare the vertex data**: In the lecture, this includes vertices and indices arrays.
 
-2. Vertex buffer obj(VBO) 준비
-glGenBuffer함수를 통해 VBO를 생성한다. VBO는 정점 데이터를 담은 버퍼 오브젝트로, 정점에 대한 다양한 데이터를 GPU가 접근 가능한 메모리에 저장해둔다. (position, normal, tangent, color, texture, coordinate 등의 정보가 VBO에 담길 수 있음.) GPU에 사용가능한 메모리 공간을 할당하고 그 공간을 가리키는 정수값을 리턴받음. 해당 버퍼를 현재 컨텍스트에서 사용하기 위해선 glBindBuffer 함수를 활용하여 바인드시켜주자.
+2. **Vertex Buffer Object (VBO)**:
+   - The `glGenBuffers` function creates a VBO. A VBO is a buffer object that can contain vertex data. Various pieces of information about vertices can be stored in a VBO. This data is stored in memory that the GPU can access (position, normal, tangent, color, texture coordinates, etc.).
+   - This function allocates usable GPU memory and returns an integer value referring to the buffer ID. If you want to use this buffer in the current context, bind the buffer to the context using `glBindBuffer`.
 
-3. Vertex buffer obj 에 정점 데이터 입력
-- CPU memory 상에 있는 정점 데이터를 GPU로 옮기는 작업. (glBufferData)
-GPU에 메모리가 따로 존재한다. (비디오 메모리)
-거기에 정점 데이터를 복사해주는것
+3. **Storing the data into the Vertex Buffer Object**:
+   - Vertex data in CPU memory should be delivered to the GPU (using the `glBufferData` function).
 
-4. Vertex Array obj(VAO) 준비
-우리의 정점 데이터의 구조를 알려주는 descriptor obj.
-각 정점은 몇 바이트로 구성되고, 정점 간에는 몇 바이트가 떨어져있는지, 정점의 0번 데이터는 어떤 사이즈의 데이터가 몇개 있는 형태인지. 데이터의 자료형, 차원 수 등 어떤속성으로 구성되어있는지 버퍼에 대한 정보를 담게된다. 그 중에서도 어떤 속성을 활성화하여 렌더링을 진행할지 세팅해줘야함. (by glVertexAttribPointer, glEnableVertexAttribArray)
--> Program, VBO, VAO를 사용하여 그림을 그리게 될 것.
-삼각형을 그려보았따.
-![yello_triangle](./attachedFiles/yt.png)
+4. **Vertex Array Object (VAO) - Descriptor Object**:
+   - The VAO stores the vertex data structure, like each vertex's byte size, how many bytes between vertices (stride), data type, etc. It holds the information about the buffer.
+   - Then, enable the attributes for rendering by using `glVertexAttribPointer` and `glEnableVertexAttribArray`.
+   - Images are drawn using the Program, VBO, and VAO.
 
-사각형 -> 삼각형 두개 합쳐서 그리면 되니 정점을 6개를 넘겨서 그려보자.
-하지만 이는 사각형을 그리기 위해선 4개만으로도 충분한데 두개나 더 써야하니 비효율적.
-직점 정점을 어떻게 사용하게할지 세팅하는, 정점을 재활용하기 위해 사용되는 EBO(index bufffer) 를 사용해보자.
+![yellow_triangle](./attachedFiles/yt.png)
 
-정점을 코너 포인트 4개만 선언을 하고 인덱스 배열을 추가해주자.
-인덱스 배열에 있는 것을 삼각형으로 묶어서 처리하게 될 것!
+If you want to draw a square, let's draw two triangles. Using a VBO alone will require storing 6 vertices, but this is inefficient because we only need 4 unique vertices.
 
-마찬가지로 인덱스 버퍼로 사용할 멤버로 context 클래스에 추가해주기.
-이렇게 인덱스 버퍼를 통해 그림을 그리면 `glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0)` 함수를 사용하게 된다.
+By using an EBO, we can provide information on how the vertices will be used and reused, reducing redundancy.
 
-![ys](./attachedFiles/ys.png)
+The vertex indices in the EBO will be used to draw in order, allowing us to reuse vertices.
 
-현재 바인딩된 VAO, VBO, EBO를 바탕으로 그림
-- 그려낼 기본 primitive 타입
-- 그리고자 하는 EBO 내 index 갯수
-- index 데이터 형
-- 그리고자 하는 EBO의 첫 데이터로부터의 오프셋
+![yellow_square](./attachedFiles/ys.png)
 
-버퍼 오브젝트를 좀더 효율적으로 사용하기 위해 리펙토링을 해보자.
+The rendering will draw the picture using the context bound with VAO, VBO, and EBO.
 
-## buffer class design
-현재 우리가 사용하고 있는 버퍼는 VBO, EBO로 두 가지가 존재한다.
-이들은 동일하게 glGenBuffer, glBindBuffer, glBufferData 함수를 이용하기 때문에, 하나의 버퍼 클래스로 만들어서 사용하면 더 깔끔해질 것이다.
+The `glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0)` function will draw the basic vertex shapes.
 
+- **Primitive Type**: Specifies the type of primitives to render (e.g., `GL_TRIANGLES`).
+- **Count**: The number of elements to render, which is the number of indices in the EBO.
+- **Type**: Specifies the type of the values in the EBO (e.g., `GL_UNSIGNED_INT`).
+- **Indices**: Specifies an offset in a buffer or a pointer to the indices (here, 0 since we're starting from the beginning).
 
-## VertexLayout 클래스
-VAO는 버텍스 버퍼가 어떤 규격으로 이루어졌는지에 대한 정보를 들고있는데,
-버텍스 레이아웃이라는 버텍스 버퍼를 가지고 정보를 가지고 있는 클래스로 만들자.
+## Buffer Class Design
 
-쉐이더 오브젝트 생성 / 소스 컴파일
-프로그램 오브젝트 생성 / 쉐이더 링크
-VAO : VBO의 구조에 대한 설명, 바인딩된 VBO, EBO 기억
-VBO : 정점 데이터를 GPU 메모리 상에 위치시킨 obj
-EBO : 인덱스데이터를 GPU 메모리 상에 위치시킨 obj
+VBO and EBO share the OpenGL functions (`glGenBuffers`, `glBindBuffer`, `glBufferData`, etc.). Therefore, we can create a class to manage buffers more efficiently.
+
+## `VertexLayout` Class
+
+The VAO manages the vertex buffer information. We can encapsulate this functionality in a `VertexLayout` class to handle VAO configurations and attribute setups.
+
+</details>
+
+---
+
+<details><summary> # [W04] GLSL </summary>
+
+## GLSL (OpenGL Shading Language)
+
+A shader is a small program that runs on the GPU to perform rendering calculations. Rendering operations are executed in parallel across vertices and pixels.
+
+GLSL is the shader language used in OpenGL for coding shaders.
+
+Other shader languages include:
+
+- **HLSL** (High-Level Shading Language) used in DirectX
+- **Metal** used in Apple's Metal API
+- **Cg** (C for Graphics) by NVIDIA, used in Unity3D
+
+## Basic GLSL Structure
+
+```glsl
+#version version_number // Predefined macro
+
+in type in_variable_name;
+
+out type out_variable_name;
+
+uniform type uniform_name;
+
+void main() {
+    // Process input(s) and perform graphics operations...
+    // Output processed data to output variable
+    out_variable_name = processed_data;
+}
+```
+
+**Type Qualifiers**:
+
+- **`in`**: Input to the shader program.
+- **`out`**: Output from the shader program.
+- **`uniform`**: Global variables that remain constant for all processed vertices or fragments during a single rendering call.
+
+Shader code also has the `main()` function as an entry point. The shader's output should be stored in an `out` variable.
+
+## GLSL Data Types
+
+- **Basic Types**: `int`, `float`, `double`, `uint`, `bool`
+- **Vector Types**:
+  - `vecX` (float vectors), `bvecX` (bool vectors), `ivecX` (int vectors), `uvecX` (uint vectors), `dvecX` (double vectors)
+  - `X` can be 2, 3, or 4, indicating the number of components.
+- **Matrix Types**:
+  - `matX`, `bmatX`, `imatX`, `umatX`, `dmatX`
+  - `X` can be 2, 3, or 4, representing the dimensions of the square matrix.
+
+### Vectors
+
+- **Accessing Vector Elements**:
+  - Use `.x`, `.y`, `.z`, `.w` to access each component.
+  - Swizzling allows you to reorder or replicate components (e.g., `vec4 v; vec3 v_xyz = v.xyz;`).
+  - Swizzling can also be done using `.rgba` for colors or `.stpq` for texture coordinates.
+
+**Examples of Swizzling**:
+
+```glsl
+vec2 someVec;
+vec4 differentVec = someVec.xyxx;
+vec3 anotherVec = differentVec.zyx;
+vec4 otherVec = someVec.xxxx + anotherVec.yxzy;
+```
+
+**Initializing Vectors**:
+
+```glsl
+vec2 vect = vec2(0.5, 0.7); // vec2 constructor
+vec4 result = vec4(vect, 0.0, 0.0); // Using another vector to initialize
+vec4 otherResult = vec4(result.xyz, 1.0); // Vector swizzling + another component
+```
+
+When using other vectors in vector initialization, the basic data types should be the same.
+
+## `in` / `out`
+
+Shaders use `in` and `out` qualifiers to define inputs and outputs.
+
+Every shader should declare the correct `in`/`out` variables to interface with other shader stages.
+
+### Vertex Shader
+
+- Inputs are the vertex attributes provided by the application.
+- You can set the attribute index using the following syntax:
+
+  ```glsl
+  layout(location = n) in type variable_name;
+  ```
+
+- **Important**: The vertex shader must set the output position `gl_Position`. If not, the vertex shader will not compile.
+
+- **Rasterization**: The output of the vertex shader is used to interpolate primitives and calculate data for each pixel.
+  
+### Fragment Shader
+
+- The interpolated data from the rasterization stage is provided as inputs to the fragment shader.
+
+- For example, if the vertex shader outputs:
+
+  ```glsl
+  out vec4 vertexColor;
+  ```
+
+  Then the fragment shader should have:
+
+  ```glsl
+  in vec4 vertexColor;
+  ```
+
+  This linkage is important for passing data between shader stages.
+
+**Uniforms**: Global variables that can be accessed by all shader stages. They hold constant values during the rendering of a primitive and are shared among all shader invocations.
+
+To set the value of a uniform variable:
+
+1. Get the uniform location using `glGetUniformLocation`.
+2. Bind the program using `glUseProgram`.
+3. Set the uniform value using `glUniform*` functions.
+
+## Vertex Attributes
+
+There is a lot of vertex information:
+
+- Position
+- Normal
+- Tangent
+- Color
+- Texture Coordinates
+- etc.
+
+Each of them is a vertex attribute.
+
+At this point, we are creating a color attribute for each vertex to pass color data from the vertex shader to the fragment shader.
+
+---
 
 </details>
