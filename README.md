@@ -246,7 +246,7 @@ then, we can get this window.
 
 </details>
 
-<details><summary> [W03] </summary>
+<details><summary> # [W03] </summary>
 
 # Graphics Pipeline
 
@@ -363,8 +363,6 @@ In this function, we create a shader object and provide it with the shader sourc
 - **`glGetShaderiv`**: Retrieves information about the shader, such as its compile status.
 - **`glGetShaderInfoLog`**: Retrieves the compilation error log for the shader.
 - **`glDeleteShader`**: Deletes the shader object.
-
----
 
 ## Program Class Design
 
@@ -523,8 +521,6 @@ VBO and EBO share the OpenGL functions (`glGenBuffers`, `glBindBuffer`, `glBuffe
 The VAO manages the vertex buffer information. We can encapsulate this functionality in a `VertexLayout` class to handle VAO configurations and attribute setups.
 
 </details>
-
----
 
 <details><summary> # [W04] GLSL </summary>
 
