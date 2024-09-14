@@ -663,7 +663,7 @@ At this point, we are creating a color attribute for each vertex to pass color d
 
 make the color attribution changed every render loops.
 
-![alt text](../../Library/Containers/com.apple.Preview/Data/tmp/com.apple.Preview.PasteboardItems/화면-기록-2024-09-14-오후-1.09.39-1(드래그함).tiff)
+![alt text](./attachedFiles/화면-기록-2024-09-14-오후-1.09.39.gif)
 
 ---
 
