@@ -658,6 +658,10 @@ Each of them is a vertex attribute.
 
 At this point, we are creating a color attribute for each vertex to pass color data from the vertex shader to the fragment shader.
 
+![vertex color attrib](./attachedFiles/cq.png)
+
+make the color attribution changed every render loops.
+![alt text](./attachedFiles/화면-기록-2024-09-14-오후-1.09.39.gif)
 ---
 
 </details>
