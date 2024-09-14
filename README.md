@@ -660,7 +660,9 @@ At this point, we are creating a color attribute for each vertex to pass color d
 
 ![vertex color attrib](./attachedFiles/cq.png)
 
+
 make the color attribution changed every render loops.
+
 ![alt text](./attachedFiles/화면-기록-2024-09-14-오후-1.09.39.gif)
 ---
 
