@@ -668,3 +668,119 @@ make the color attribution changed every render loops.
 ---
 
 </details>
+
+
+<details><summary> # [W05] Texture </summary>
+
+---
+
+# Texture
+
+It is hard to draw some objects in a picture by just setting the vertices because it would require too many vertices. Not only vertex positions but also color and texture information are needed.
+
+## Texture Mapping
+Texture mapping involves applying an image to the surface of a model by associating it with vertices.
+
+## Texture Coordinates
+- The texture image position corresponds to the vertex area.
+- Texture coordinates are normalized to the range [0, 1], with the bottom-left corner as the origin.
+
+Texture coordinates are provided as vertex attributes to the vertex shader.
+
+During rasterization, each pixel's texture coordinate value is calculated.
+
+In the fragment shader, the color of the texture image is fetched according to the texture coordinate.
+
+## Texture Wrapping
+How to handle texture coordinates that fall outside the [0, 1] range:
+
+- `GL_REPEAT`: Repeats the texture image.
+- `GL_MIRRORED_REPEAT`: Repeats the texture image, but mirrors it with each repeat.
+- `GL_CLAMP_TO_EDGE`: Clamps the texture coordinate to the edge of the texture.
+- `GL_CLAMP_TO_BORDER`: Clamps the texture coordinate to a border color.
+
+Texture coordinates do not have to be within [0, 1]; these settings determine how to handle values outside this range.
+
+## Texture Filtering
+If the texture image size does not match the screen size, you need to decide how to sample texture pixels:
+
+- `GL_NEAREST`: Selects the nearest pixel to the texture coordinate. This can result in noticeable pixelation.
+- `GL_LINEAR`: Interpolates the values of the four nearest pixels. This provides smoother transitions.
+
+## Texture in OpenGL
+1. Create and bind OpenGL texture objects.
+2. Set texture wrapping and filtering options.
+3. Copy the image data to GPU memory.
+4. Send the texture you want to use to the shader program as a uniform.
+
+# Example
+## Image Loading
+1. Include `stb_image.h`.
+   - `stb_image.h` is a library for loading image formats such as JPG, PNG, TGA, etc. It is a single-file public domain library, making it easy to use.
+
+## Image Class Design
+
+## Texture Application
+- Add texture coordinates to vertex attributes.
+- Create shaders that read the texture and define the pixel values.
+
+## OpenGL Texture API
+- `glGenTextures()`: Creates OpenGL texture objects.
+- `glBindTexture()`: Binds a texture object to the current texture target.
+- `glTexParameteri()`: Sets texture filter and wrapping parameters.
+- `glTexImage2D(target, level, internalFormat, width, height, border, format, type, data)`
+  - Transfers texture data from CPU memory to GPU memory, specifying how the data should be used.
+  - `target`: Specifies the texture target (e.g., `GL_TEXTURE_2D`).
+  - `level`: Specifies the mipmap level. 0 is the base level, related to mipmaps.
+  - `internalFormat`: Specifies the format used by the GPU.
+  - `width / height / border`: Specifies the texture width, height, and border size.
+  - `format`: Specifies the format of the pixel data.
+  - `type`: Specifies the data type of the pixel data.
+  - `data`: Pointer to the image data.
+
+- Power-of-2 (POT) textures are most efficient for GPUs.
+- NPOT (Non-Power-Of-Two) textures may be unsupported depending on GPU specifications.
+
+# Texture Refactoring
+Since image data is used only once, a smart pointer might be too heavy for just creating textures. We use a simple pointer for the image in our class.
+
+## Checker Image Creation
+- Create a checkerboard image programmatically instead of downloading it.
+
+## Mipmap
+When the checkerboard is scaled down, artifacts may appear.
+- If the texture pixel area is larger than the screen pixel, it is fine.
+- But if the screen pixel covers more than one texture pixel, artifacts can occur.
+
+-> Mipmaps are used to avoid this issue.
+Mipmaps involve creating and using smaller versions of the texture image. As the screen size gets smaller, the appropriate smaller mipmap level is used to prevent distortion.
+
+## Multiple Textures
+Blending multiple textures in the fragment shader.
+
+### How to Provide Textures to the Shader Program
+The maximum number of textures that can be used in a shader program is 32. There are 32 texture slots available.
+
+1. `glActiveTexture(textureSlot)`: Choose and activate a texture slot.
+2. `glBindTexture(textureType, textureId)`: Bind the texture object to the currently active texture slot.
+3. `glGetUniformLocation()`: Get the uniform location in the shader.
+4. `glUniform1i()`: Set the texture slot index to the `sampler2D` uniform.
+
+## Changes in context.cpp
+1. Vertices
+   - We provide just 6 elements per vertex. However, in this case, we need to include vertex position, color, and texture coordinates.
+   - Therefore, 8 elements per vertex are needed.
+
+2. SetAttrib
+   - Inform the GPU of the data format using `glVertexAttribPointer()` and `glEnableVertexAttribArray`.
+   - Since we added texture coordinates, we need to specify this to the GPU.
+
+3. Loading the Image
+   - Use the `stb` function to load image data into the program.
+
+4. Making Texture Objects
+   - Generate, bind, and set texture information using `glGenTextures()`, `glBindTexture()`, and `glTexParameteri()`.
+
+---
+
+</details>

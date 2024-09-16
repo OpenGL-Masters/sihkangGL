@@ -1,109 +1,125 @@
-# GLSL
+# Texture
+it is hard to draw some object in picture just only setting the vertices. because it will need too many vertices.
+not only vertex's location, but also color, texture info are needed.
 
-openGL Shader Language
-쉐이더: GPU 상에서 동작하는 그림을 그리기 위한 작은 프로그램
-정점별 / 픽셀 별 병렬 수행되어 성능을 높임
-GLSL: openGL에서 shader를 작성하기 위해 제공하는 c 기반 언어
-그 외의 대표적인 쉐이더 언어: HLSL(DirectX), Metal(metal), cg(nVidia가 제시한 쉐이더 언어, unity3D에서 사용)
+-> Texture mapping 
+paste the image to the area of vertices.
 
-## 대략적인 GLSL 구조
+## Texture coordinates
+- the texture image position respond to the vertex area.
+it is normalized to [0, 1]. The left-down point is origin.
 
-```c
-#version version_number // predifine macro
+the Texture coordinate is entered with vertex location like a form of vertex attributes to the vertex shader.
 
-in type in_vaiable_name;
+During Rasterization, each pixel's texture coordinate value is calculated.
 
-out type out_variable_name;
+In fragement shader, the texture image color is taken according to the texture coordinate.
 
-uniform type uniform_name;
+## Texture wrapping
+How to treat the texture coordinate value out of [0, 1]?
 
-void main(){
-	// process input(s) and do some weird graphics stuff...
-	// output processed stuff to output variable
-	out_variable_name = weird_stuff_we_processed;
-}
-```
+- `GL_REPEAT`
+- `GL_MIRRORED_REPEAT`
+- `GL_CLAMP_TO_EDGE`
+- `GL_CLAMP_TO_BORDER`
 
-in out uniform <- 한정자. 변수가 어떤 형태로 사용되는지 정보 제공.
-in: 쉐이더 프로그램의 인풋
-out: 쉐이더 프로그램의 아웃풋
-uniform: 항상 동일한 값으로 존재하는 const 같은 녀석
+Texture coordinate doesn't have to [0, 1]. Just setting how to treat the pixel value out of the range.
 
-또한 void main() {} 을 엔트리 포인트로 가진다. 여기서 아웃풋으로 나갈 변수에 값을 담아주어 결과를 출력하자
-vs, fs 모두 이런 형식으로 구성된다.
+## Texture filtering
+If the image size doesn't fit the screen, we need a setting option about What texture pixel should be used .
 
-## GLSL data type
-int, float, double, uint, bool
-* 벡터 타입: vexX(float형 벡터), bvecX(bool형 벡터), ivexX(int형 벡터), uvexX(uint형 벡터), dvecX(double형 벡터)
-X에는 2, 3, 4 사용 가능
+- `GL_NEAREST`: The nearest pixel to the texture coordinate.
+-> the pixel edge might be seen.
+- `GL_LINEAR`: The four pixels value around the texture coordinate will be interpolated bilinearly.
+-> mildly pixel color changed.
 
-* 행렬 타입: matX, bmatX, imatX, umatX, dmatX
-동일하게 X에는 2, 3, 4 사용 가능. 위와 동일하게 기본자료형에 해당하는 행렬 타입이 존재.
+## Texture in openGL
+1. openGL texture object create / binding
+2. Setting wrapping, filtering option
+3. Copy the image data to the GPU Memory
+4. the texture wanted to use when the shader is binded is sended to the program as uniform.
 
-### vector
-- 벡터 원소 접근
-: .x / .y / .z / .w 인덱스로 각 벡터의 성분에 접근
-swizzling 가능. 얻어오고 싶은 인덱스를 연속으로 쓰기 가능 (.xyz => vec3 으로 리턴)
-이러한 swizzling 기능은 .rgba, .stpq에도 동일한 방식으로 적용됨.
+# Example
+## image loading
+1. stb include.
+stb_image.h : Library to load the image format jpg, png, tga, etc.
+it is single-file public domain library. so easy to use.
 
-```
-vec2 someVec;
-vec4 differentVec = someVec.xyxx;
-vec3 anotherVec = differentVec.zyx;
-vec4 otherVec = someVec.xxxx + anotherVec.yxzy;
-```
-다양한 형식의 swizzling으로 편하게 벡터 표현이 가능하다.
+## Image class design
 
-- 벡터 초기값 선언
-```
-vec2 vect = vec2(0.5, 0.7); // vec2생성자 사용
-vec4 result = vec4(vect, 0.0, 0.0); // 다른 벡터를 섞어서 사용 가능
-vec4 otherResult = vec4(result.xyz, 1.0) // 다른 벡터 swizzling + 섞어서 사용 
+## Texture application
+- Add a texture coordinate to vertex attribute
+- Making shader that reads the texture and defining the pixel value.
 
-```
-단 기본 자료형이 일치하는 (위에서는 float 값) 내에서 섞어서 사용 가능.
+## openGL texture API 
+- glGenTextures(): openGL texture object create
+- glBindTexture(): Texture we want to use bind to context
+- glTexParameteri(): Setting the parameter of texture filter and wrapping method.
+- glTexImage2D(target, level, internalFormat, width, height, border, format, type, data)
+	: Send the texture data from CPU Memory to GPU memory with how to use the data.
+	set the Binded texture's size, pixel format and copy the image data to GPU.
+	target -> Binding texture
+	level -> setting texture level. 0 is default. it is related to mipmap.
+	internalFormat : Texture's pixel format used by GPU
+	width / height / border : set Texture width, height. border size
+	format : pixel format of the image
+	type : channel data type of the input image
+	data : memory address written the image data.
 
-## IN / OUT
-쉐이더의 인풋과 아웃풋이 무엇인지를 지정.
-모든 쉐이더는 용도에 맞는 입출력이 선언되어 있어야함.
-in, out: 쉐이더의 입출력을 가리키는 type qualifier.
+- the power of 2 size is the most efficient for GPU.
+- NPOT(Non-Power-Of-Two) texture : NPOT cases might be unsupported depending on the GPU spec.
 
-### Vertex shader
-각 정점 별로 설정된 vertex attribute를 입력받는다.
-몇 번째 attribute를 입력받을지에 대한 추가적인 설정을 할 수 있음.
+# Texture Refactoring
+We will use the image data just one time. so, smartpointer is too heavy to use for only making texture.
 
-```
-layout (location = n )
-```
+in our class, we use just a pointer to the image.
 
-**반드시 정점의 출력 위치 gl_Position 값을 계산해줘야함.**
-이게 없으면 vs가 컴파일 되지 않는다.
+## Checker image creation
+- Let's make a image not only downloading.
+- Create image of checker board.
 
-- Rasterization: vertex shader의 출력값을 primitive에 맞게 보간하여 픽셀별 값으로 변환 (Rasterization)
-- Fragement shader: Rasterization을 거쳐 픽셀 별로 할당된 vertex shader 의 출력값이 입력됨. 각 픽셀의 실제 색상 값이 출력되어야함.
+## Mipmap
+when the checker board is shrinked, unknown lines are maded.
+- when the texture pixel area is bigger than pixel in screen, it is ok.
+- But the screen pixel include more than one texture pixel, something goes wrong.
 
-주의해야할 점은, vs의 아웃풋과 fs의 인풋은 동일해야함.
-vs -> out vec4 vertexColor
-그러면 fs -> in vec4 vertexColor 로 존재해야함.
-안그러면 링크에러 발생
+-> That's why we use mipmap.
+mipmap: preparation of small size image.
+when the screen size get smaller, according to its size the smaller image will be used to prevent the image distortion.
 
-gl_Position은 이미 기본적으로 설정된 변수라 안가져와도 되지만.
+original size level is a base level.
+Then, Calculate the half of the width, height image and stored it. (level++)
+-> 512 * 512 image has lv0 ~ 9 will be created.
 
-uniform: 쉐이더에 전달 가능한 global value
-병렬로 수행되는 모든 쉐이더 쓰레드들이 동일한 값을 전달받는다.
+## MULTIPLE TEXTURE
+Blending a multiple textures in fragment shader.
 
-변수 선언 앞에 uniform type qualifier를 사용하여 선언.
+### How to provide the texture to the shader program
+The number of texture that can be used at a frame in one shader is 32.
+There is 32 slot to store the textures.
 
-uniform variable 에 값을 입력하려면,
-glGetUniformLocation() 함수를 활용하여 program object로부터 uniform handle을 얻는다. 이후 program을 바인딩 한 후 **glUniform@@** 함수를 활용하여 입력
+1. glActiveTexture(textureSlot)
+- choose the texture slot and activate the slot.
+2. glBindTexture(textureType, textureId) 
+- Binding the texture object to the texture slot.
+3. glGetUniformLocation() 
+- get the uniform handle in the shader
+4. glUniform1i() 
+- input the texture slot index to sampler2D uniform
 
-C++ 코드에서 그림을 그릴 때 uniform이라는 공통된 값들을 설정해준다.
-텍스쳐, 트랜스폼 메트릭스 등을 설정할때 사용하게 될 것이다.
+## The change in context.cpp
+1. vertices
+we deliver just 6 element per vertex.
+But in this case, we need to inform the vertex location, color, and the texture coordinate.
+-> 8 element per vertex needed.
 
-## vertex attributes
-하나의 버텍스가 가지는 정보는 여러가지이다.
-: position, normal, tangent, color, texture coordinates, ...
-각각이 하나의 버텍스 속성이 된다.
+2. SetAttrib.
+inform the data's format to GPU. 
+by `glVertexAttribPointer()`, `glEnableVertexAttribArry`,
+because we added the texture coordinate, let GPU know what is texture coordinate.
 
-컬러 attribute를 넣어보자.
+3. Loading the image.
+by using stb function, load the image data to our program.
 
+4. Making texture object
+generate, bind, and set the texture information by `glGenTextures`, `glBindTexture`, `glTexParameteri`.

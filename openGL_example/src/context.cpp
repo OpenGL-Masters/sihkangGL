@@ -1,4 +1,5 @@
 #include "context.h"
+#include "image.h"
 
 ContextUPtr Context::Create()
 {
@@ -10,18 +11,11 @@ ContextUPtr Context::Create()
 
 bool Context::Init()
 {
-	// float vertices[] = {
-	// 	0.5f, 0.5f, 0.0f,
-	// 	0.5f, -0.5f, 0.0f,
-	// 	-0.5f, -0.5f, 0.0f,
-	// 	-0.5f, 0.5f, 0.0f,
-	// };
-
 	float vertices[] = {
-		0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // top right, red
-		0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom right, green
-		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // bottomleft, blue
-		-0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, // top left, yellow
+		0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+		0.5f, -0.5f, 0.0f, 0.f, 1.0f, 0.0f, 1.0f, 0.0f,
+		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+		-0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
 	};
 
 	uint32_t indices[] = {
@@ -29,38 +23,19 @@ bool Context::Init()
 		1, 2, 3,
 	};
 
-	// VertexLayout 클래스 리팩토링으로 아래 주석 대체
 	m_vertexLayout = VertexLayout::Create();
-// 	// VAO -> VBO 순으로 작성하기.
-// 	// glGenVertexArrays(1, &m_vertexArrayObject);
-// 	// glBindVertexArray(m_vertexArrayObject);
 
-
-	// refactoring 으로 m_vertexBuffer를 클래스로 생성.
 	m_vertexBuffer = Buffer::CreateWithData(GL_ARRAY_BUFFER, 
-				GL_STATIC_DRAW, vertices, sizeof(float) * 24);
-	// glGenBuffers(1, &m_vertexBuffer);
-	// glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
-	// glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 12, vertices, GL_STATIC_DRAW);
+				GL_STATIC_DRAW, vertices, sizeof(float) * 32);
+	
+	m_vertexLayout->SetAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, 0); // for location
+	m_vertexLayout->SetAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 3); // for color
+	m_vertexLayout->SetAttrib(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, sizeof(float) * 6); // for texture coord 2D.
 
-	m_vertexLayout->SetAttrib(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6 , 0); // for location
-	m_vertexLayout->SetAttrib(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 6 , sizeof(float) * 3); // for color
-
-	// refactoring 으로 m_indexBuffer를 클래스로 생성.
 	m_indexBuffer = Buffer::CreateWithData(GL_ELEMENT_ARRAY_BUFFER, GL_STATIC_DRAW, indices, sizeof(uint32_t) * 6);
-	// glGenBuffers(1, &m_indexBuffer);
-	// glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
-	// glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * 6, indices, GL_STATIC_DRAW);
-
-
-	// 두 함수 호출 순서에 주의
-	// glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
-	// glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
-	// glEnableVertexAttribArray(0);
-	// glEnableVertexAttribArray(1);
-
-	const char* vertexShaderPath = "/Users/sihwan/Programming/sihkang_GL/openGL_example/shader/per_vertex_color.vs";
-	const char* fragmentShaderPath = "/Users/sihwan/Programming/sihkang_GL/openGL_example/shader/per_vertex_color.fs";
+	
+	const char* vertexShaderPath = "/Users/sihwan/Programming/sihkang_GL/openGL_example/shader/texture.vs";
+	const char* fragmentShaderPath = "/Users/sihwan/Programming/sihkang_GL/openGL_example/shader/texture.fs";
 
 	ShaderPtr vertexShader = Shader::CreateFromFile(vertexShaderPath, GL_VERTEX_SHADER);
 	ShaderPtr fragmentShader = Shader::CreateFromFile(fragmentShaderPath, GL_FRAGMENT_SHADER);
@@ -76,13 +51,30 @@ bool Context::Init()
 		return false;
 	SPDLOG_INFO("Program id: {}", m_program->Get());
 
-	// uniform 값을 넣어보자.
-	// auto loc = glGetUniformLocation(m_program->Get(), "color"); // color라는 유니폼 변수의 위치를 찾아옴
-	// m_program->Use(); // 현재 context로 프로그램 등록
-	// glUniform4f(loc, 1.0f, 1.0f, 0.0f, 1.0f);
-
-	// 컬러 프레임버퍼 화면을 클리어할 색상 지정
 	glClearColor(0.0f, 0.1f, 0.2f, 0.0f);
+	
+	const char * imagePath = "/Users/sihwan/Programming/sihkang_GL/openGL_example/image/container.jpg";
+	const char * imagePath2 = "/Users/sihwan/Programming/sihkang_GL/openGL_example/image/image.png";
+	auto image = Image::Load(imagePath);
+	if (!image)
+		return false;
+	SPDLOG_INFO("image: {} x {}, {} channels", image->GetWidth(), image->GetHeight(), image->GetChannelCount());
+	// auto image = Image::Create(512,512);
+	// image->SetCheckImage(64, 128);
+	
+	m_texture1 = Texture::CreateFromImage(image.get());
+	auto image2 = Image::Load(imagePath2);
+	m_texture2 = Texture::CreateFromImage(image2.get());
+	
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_texture1->Get());
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_texture2->Get());
+
+	m_program->Use();
+	glUniform1i(glGetUniformLocation(m_program->Get(), "tex1"), 0);
+	glUniform1i(glGetUniformLocation(m_program->Get(), "tex2"), 1);
+
 	return true;
 }
 
