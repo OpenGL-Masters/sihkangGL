@@ -1,125 +1,122 @@
-# Texture
-it is hard to draw some object in picture just only setting the vertices. because it will need too many vertices.
-not only vertex's location, but also color, texture info are needed.
+# C++ Matrix/vector calculation
+- GLSL 의 경우 내부적으로 행렬 및 벡터와 관련된 다양한 기능 및 내부함수 제공
+- C++에는 기본적인 수학적 연산 외에 선형대수 관련 기능은 제공되지 않음.
+-> 라이브러리를 이용하자.
 
--> Texture mapping 
-paste the image to the area of vertices.
+## C++ matrix library
+### Eigen3
+- C++ 선형대수 라이브러리로, 헤더파일로만 구성됨.
+- 많은 라이브러리들이 이걸 사용. openGL 외, openCV 안에서 이미지로딩 시 eigen3로 변환.
+- 일반적인 N차원 선형대수 연산에 사용되는. 사이즈가 큰 라이브러리이다.
 
-## Texture coordinates
-- the texture image position respond to the vertex area.
-it is normalized to [0, 1]. The left-down point is origin.
+### GLM
+- oenGL Math library
+- 3D graphics에 필요한 4차원 선형대수 연산까지를 지원.
+- 우리가 사용할 컴팩스한 사이즈의 라이브러리.
+-> Dependency.cmake에 추가해보자.
 
-the Texture coordinate is entered with vertex location like a form of vertex attributes to the vertex shader.
+마찬가지로 헤더파일로만 구성되었으므로, 우리가 사용할 디렉토리로 카피해오는 식으로 진행해보자.
 
-During Rasterization, each pixel's texture coordinate value is calculated.
+```cmake
 
-In fragement shader, the texture image color is taken according to the texture coordinate.
+ExternalProject_Add(
+	dep_glm
+	GIT_REPOSITORY "https://github.com/g-truc/glm"
+	GIT_TAG "0.9.9.8"
+	GIT_SHALLOW 1
+	UPDATE_COMMAND ""
+	PATCH_COMMAND ""
+	CONFIGURE_COMMAND ""
+	BUILD_COMMAND ""
+	TEST_COMMAND ""
+	INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory
+		${PROJECT_BINARY_DIR}/dep_glm-prefix/src/dep_glm/glm
+		${DEP_INSTALL_DIR}/include/glm
+	)
+	
+set(DEP_LIST ${DEP_LIST} dep_glm)
 
-## Texture wrapping
-How to treat the texture coordinate value out of [0, 1]?
+```
 
-- `GL_REPEAT`
-- `GL_MIRRORED_REPEAT`
-- `GL_CLAMP_TO_EDGE`
-- `GL_CLAMP_TO_BORDER`
+이후 common.h 파일에 glm 라이브러리 헤더를 추가해주자.
 
-Texture coordinate doesn't have to [0, 1]. Just setting how to treat the pixel value out of the range.
+## Vertex transformation
+- VBO 상의 정점은 고정.
+- vertex shader에서 변환 행렬을 uniform으로 입력
+- vertex shader 내에서 행렬곱 계산
+- 해당 유니폼 행렬에 대한 내용은 context.cpp에서 입력하여 glGetUniformLocation, glUniformMatrix4fv 함수를 통해 쉐이더로 전달해주기.
 
-## Texture filtering
-If the image size doesn't fit the screen, we need a setting option about What texture pixel should be used .
+# Coordinate System
+- 어떤 정점 위치를 기술하기 위한 기준
+- 선형 변환은 한 좌표계로 기술된 벡터를 다른 좌표계에 대해 기술하는 변환으로 해석할 수 있음.
 
-- `GL_NEAREST`: The nearest pixel to the texture coordinate.
--> the pixel edge might be seen.
-- `GL_LINEAR`: The four pixels value around the texture coordinate will be interpolated bilinearly.
--> mildly pixel color changed.
+## 좌표 공간 간의 변환
+openGL 의 그림이 그려지는 공간
+- [-1, 1] 범위로 normalized 된 공간
+- Canonical space
 
-## Texture in openGL
-1. openGL texture object create / binding
-2. Setting wrapping, filtering option
-3. Copy the image data to the GPU Memory
-4. the texture wanted to use when the shader is binded is sended to the program as uniform.
+object들은 local space 를 기준으로 기술됨.
+Local space -> World space -> View space -> Canonical space 로 변환.
 
-# Example
-## image loading
-1. stb include.
-stb_image.h : Library to load the image format jpg, png, tga, etc.
-it is single-file public domain library. so easy to use.
+### Transform Matrix
+model: Local -> world
+View : World -> Camera
+Projection : Camera -> Canonical
+Clip space 에서 [-1, 1] 범위 밖으로 벗어난 면들은 clipping
 
-## Image class design
+## Orthogonal Projection
+projection에는 크게 두가지가 있다.
 
-## Texture application
-- Add a texture coordinate to vertex attribute
-- Making shader that reads the texture and defining the pixel value.
+### 1. 직교투영
+원근감 없이 평행상 선이 계속 평행하도록 투영하는 방식
+설계도면 등을 그려낼 때 유용
+- 6개 파라미터: left, right, bottom, top, near, far
+- z축에 -1: Clip space이후에는 오른손 좌표계에서 왼손 좌표계로 변경됨을 고려하는 것.
 
-## openGL texture API 
-- glGenTextures(): openGL texture object create
-- glBindTexture(): Texture we want to use bind to context
-- glTexParameteri(): Setting the parameter of texture filter and wrapping method.
-- glTexImage2D(target, level, internalFormat, width, height, border, format, type, data)
-	: Send the texture data from CPU Memory to GPU memory with how to use the data.
-	set the Binded texture's size, pixel format and copy the image data to GPU.
-	target -> Binding texture
-	level -> setting texture level. 0 is default. it is related to mipmap.
-	internalFormat : Texture's pixel format used by GPU
-	width / height / border : set Texture width, height. border size
-	format : pixel format of the image
-	type : channel data type of the input image
-	data : memory address written the image data.
+### 2. 원근 투영
+변환 이전에 평행한 선이 변환 후에 한 점에서 만남(소실점)
+멀리 있을 수록 물체가 작아져 원근감이 발생
+- 4개의 파라미터: 종횡비(aspect ratio), 화각(foV), near, far
 
-- the power of 2 size is the most efficient for GPU.
-- NPOT(Non-Power-Of-Two) texture : NPOT cases might be unsupported depending on the GPU spec.
+모든 변환의 조합
+-> local space를 기준으로 한 좌표의 clip space 에서의 좌표는 소위 MVP(Model-View-Projection) matrix를 거쳐 구할 수 있음.
 
-# Texture Refactoring
-We will use the image data just one time. so, smartpointer is too heavy to use for only making texture.
+## 코드 적용하기
+```
+auto model = glm::rotate(glm::mat4(1.0f), glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-in our class, we use just a pointer to the image.
+auto view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
-## Checker image creation
-- Let's make a image not only downloading.
-- Create image of checker board.
+auto projection = glm::perspective(glm::radians(45.0f), (float)640/(float)480, 0.01f, 10.0f);
 
-## Mipmap
-when the checker board is shrinked, unknown lines are maded.
-- when the texture pixel area is bigger than pixel in screen, it is ok.
-- But the screen pixel include more than one texture pixel, something goes wrong.
+auto transform = projection * view * model;
+auto transformLoc = glGetUniformLocation(m_program->Get(), "transform");
+```
+적용하게 되면 기존에 나오던 이미지가 x축 기준 -55도 눕혀지고, -z방향으로 3만큼 이동한 형태의 이미지를 얻게된다.
 
--> That's why we use mipmap.
-mipmap: preparation of small size image.
-when the screen size get smaller, according to its size the smaller image will be used to prevent the image distortion.
+## 큐브로 만들기
+그냥 냅다 큐브로 만들면 다소 이상한 큐브가 생김
+-> depth buffer(z 버퍼)를 고려해야함.
 
-original size level is a base level.
-Then, Calculate the half of the width, height image and stored it. (level++)
--> 512 * 512 image has lv0 ~ 9 will be created.
+각 픽셀의 컬러값을 저장하는 버퍼 외에, 해당 픽셀의 깊이값(z축값)을 저장.
 
-## MULTIPLE TEXTURE
-Blending a multiple textures in fragment shader.
+깊이 테스트
+- 어떤 픽셀의 값을 업데이트 하기 전, 현재 그리려는 픽셀의 z값과 깊이 버퍼에 저장된 해당 위치의 z값을 비교해봄.
+- 비교 결과 현재 그리려는 픽셀이 이전에 그려진 픽셀보다 뒤에 있을 경우 픽셀을 그리지 않음.
 
-### How to provide the texture to the shader program
-The number of texture that can be used at a frame in one shader is 32.
-There is 32 slot to store the textures.
+openGL의 depth buffer 초기값은 1
+1이 가장 뒤에 있고, 0이 가장 앞을 의미(왼손 좌표계)
 
-1. glActiveTexture(textureSlot)
-- choose the texture slot and activate the slot.
-2. glBindTexture(textureType, textureId) 
-- Binding the texture object to the texture slot.
-3. glGetUniformLocation() 
-- get the uniform handle in the shader
-4. glUniform1i() 
-- input the texture slot index to sampler2D uniform
+glEnable(GL_DEPTH_TEST)
+glDisable(GL_DEPTH_TEST)로 깊이 데스트를 켜고 끌 수 있음.
 
-## The change in context.cpp
-1. vertices
-we deliver just 6 element per vertex.
-But in this case, we need to inform the vertex location, color, and the texture coordinate.
--> 8 element per vertex needed.
+glDepthFunc()를 이용해서 깊이 테스트 통과 조건을 변경할 수 있음.
+깊이 테스트 통과 조건의 기본값은 GL_LESS. 더 작은 z값인 경우 그림을 그리는 것이 기본.
 
-2. SetAttrib.
-inform the data's format to GPU. 
-by `glVertexAttribPointer()`, `glEnableVertexAttribArry`,
-because we added the texture coordinate, let GPU know what is texture coordinate.
+### context::Render() 수정
+```
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+glEnable(GL_DEPTH_TEST);
+```
+추가하여 z-buffer 테스트를 켜주자.
 
-3. Loading the image.
-by using stb function, load the image data to our program.
-
-4. Making texture object
-generate, bind, and set the texture information by `glGenTextures`, `glBindTexture`, `glTexParameteri`.

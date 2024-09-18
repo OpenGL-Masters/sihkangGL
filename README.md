@@ -784,3 +784,102 @@ The maximum number of textures that can be used in a shader program is 32. There
 ---
 
 </details>
+
+<details><summary> # [W06] Transformation </summary>
+
+# C++ Matrix/Vector Calculations
+- GLSL provides many functions for matrix and vector operations.
+- C++, by default, does not offer matrix and vector calculation tools.
+→ To solve this, we use libraries.
+
+## C++ Matrix Libraries
+### Eigen3
+- A C++ library for linear algebra.
+- It is widely used in various libraries, such as OpenCV.
+- Eigen3 is particularly useful for complex linear algebra calculations.
+
+### GLM
+- OpenGL Mathematics (GLM) library.
+- It supports 3D graphics-related calculations, including 4D vectors and matrices.
+→ Add GLM to `Dependency.cmake`.
+
+GLM consists solely of header files, so you only need to copy the headers to your build directory.
+
+```cmake
+ExternalProject_Add(
+	dep_glm
+	GIT_REPOSITORY "https://github.com/g-truc/glm"
+	GIT_TAG "0.9.9.8"
+	GIT_SHALLOW 1
+	UPDATE_COMMAND ""
+	PATCH_COMMAND ""
+	CONFIGURE_COMMAND ""
+	BUILD_COMMAND ""
+	TEST_COMMAND ""
+	INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory
+		${PROJECT_BINARY_DIR}/dep_glm-prefix/src/dep_glm/glm
+		${DEP_INSTALL_DIR}/include/glm
+	)
+	
+set(DEP_LIST ${DEP_LIST} dep_glm)
+```
+
+Then, include the GLM library in `common.h`.
+
+## Vertex Transformation
+- Vertices in the VBO are fixed.
+- The transformation matrix is passed into the vertex shader as a uniform variable.
+- The matrix multiplication is performed within the vertex shader.
+- The uniform matrix is passed to the shader using `glGetUniformLocation` and `glUniformMatrix4fv`.
+
+# Coordinate Systems
+- Coordinate systems define the position of vertices.
+- A linear transformation can be interpreted as a change from one coordinate system to another.
+
+## Transforming Between Coordinate Spaces
+In OpenGL, the space where objects are rendered is the normalized device coordinate space, ranging from [-1, 1].
+This space is also known as the canonical space.
+
+An object's position is initially described in local space. To render this object in canonical space, it must undergo several transformations:
+1. Local Space → World Space
+2. World Space → View Space
+3. View Space → Canonical Space
+
+### Transformation Matrices
+- **Model Matrix**: Transforms from local space to world space.
+- **View Matrix**: Transforms from world space to camera space.
+- **Projection Matrix**: Transforms from camera space to canonical space.
+
+In clip space (canonical space), objects that fall outside the [-1, 1] range will be clipped.
+
+## Projection Methods
+### 1. Orthographic Projection
+An orthographic projection maintains parallel lines, meaning they remain parallel after the transformation.
+- Parameters: left, right, bottom, top, near, far (total of 6)
+- The projection matrix has -1 on the z-axis to account for the transition from right-handed to left-handed coordinates after clipping.
+
+### 2. Perspective Projection
+Parallel lines will converge at a single point in perspective projection. 
+- The further an object is, the smaller it appears.
+- Parameters: aspect ratio, field of view (FoV), near, far.
+
+Using these matrices (MVP: Model-View-Projection), local space can be transformed into clip space.
+
+## Creating a 3D Cube
+In 3D, depth is a crucial factor in determining whether an object is in front of or behind another.
+→ This requires the use of a depth buffer (also called a z-buffer).
+
+### Depth Testing
+Before updating pixel data, the depth of the current pixel is compared to the value stored in the z-buffer at the same location.
+- If the current pixel's depth is greater (further away) than the z-buffer value, it will not be drawn.
+- The z-buffer's initial value is 1, where 1 represents the furthest possible depth.
+
+### OpenGL Commands for Depth Testing
+- `glEnable(GL_DEPTH_TEST)`: Enables depth testing.
+- `glDisable(GL_DEPTH_TEST)`: Disables depth testing.
+
+The default condition for depth testing is `GL_LESS`, meaning the pixel with a lesser depth value (closer to the camera) will be drawn.
+
+
+
+</details>
