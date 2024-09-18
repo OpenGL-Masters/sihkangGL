@@ -974,6 +974,67 @@ We need to register GLFW callback functions for handling mouse and keyboard inpu
 **Result:**
 * ![Resulting Image](<./attachedFiles/화면 기록 2024-09-18 오후 3.14.13.gif>)
 
-</details>
+# IMGUI
+
+## GUI IN OPENGL
+
+1. **Using a GUI Framework:**  
+   Create a GUI interface and render it on an OpenGL surface using frameworks like Win32, MFC, Qt, Cocoa, or Android.
+
+2. **Creating GUI Components Directly in OpenGL:**  
+   Build GUI components inside the OpenGL window and handle events using libraries like ImGui.
 
 ---
+
+[github.com/ocornut/imgui](https://github.com/ocornut/imgui)  
+ImGui is an open-source library created by Omar Cornut. It is an Immediate-Mode GUI, which means UI elements are drawn directly using a graphics API every frame.
+
+## Features of IMGUI
+
+- **Immediate Mode GUI:**  
+   UI components are recreated and rendered in each frame. This method is simple to use but can sometimes be mixed with other code that handles rendering of graphical objects.
+
+- **Separation of Rendering Backend:**  
+   ImGui can be used with various graphics APIs. If needed, you can write your own rendering backend for it.
+
+- **Graphics Programming-Oriented Components:**  
+   It includes components such as a vector editor and color picker, which are useful for graphics-related tasks.
+
+- **Minimal Dependencies:**  
+   ImGui is easy to build and integrate into projects, as it requires very few dependencies.
+
+## Installing IMGUI
+
+The ImGui repository does not come with a makefile or CMake configuration.  
+Instead, you can manually download the source files and include them in your project.
+
+When the application runs, ImGui's UI components will overlay the OpenGL screen. These components can be resized or moved using the mouse.
+
+- **`ImGui_ImplGlfw_NewFrame()`**:  
+   This function, called in the main loop, updates the screen size and mouse input by retrieving data from the `GLFWwindow`. 
+   
+   **Note**: You don’t need to explicitly connect callback functions like you normally would with GLFW.
+
+## UI / Parameter Binding
+
+You can bind UI elements to camera parameters, add a "Camera Reset" button, or a color picker to adjust the clear color.
+
+Each ImGui function corresponds to a specific UI component and returns a boolean value. If the return value is `true`, it indicates the UI component has been changed.  
+You can handle these events using `if` statements to add custom logic for when the UI changes.
+
+## IMGUI Callback Integration
+
+You can integrate ImGui into your existing callback functions or even replace certain callbacks with ImGui logic.  
+For instance, ImGui's internal callbacks can be linked to your OpenGL callback functions to make everything work seamlessly.
+
+## How to Learn ImGui?
+
+ImGui doesn't have extensive official documentation. Most information about UI components is contained in `imgui.h`.  
+For practical examples, you can refer to the `imgui_demo.cpp` file, which demonstrates the usage of various ImGui functions.
+
+
+![alt text](./attachedFiles/imgui.png)
+
+
+</details>
+
