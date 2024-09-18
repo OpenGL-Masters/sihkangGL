@@ -30,6 +30,8 @@ private:
 	TextureUPtr m_texture1;
 	TextureUPtr m_texture2;
 
+	glm::vec4 m_clearColor { glm::vec4(0.1f, 0.3f, 0.1f, 0.0f) };
+
 	float m_cameraPitch { 0.0f }; // 60분법 각도
 	float m_cameraYaw { 0.0f } ;
 	glm::vec3 m_cameraPos { glm::vec3(0.0f, 0.0f, 3.0f) };
