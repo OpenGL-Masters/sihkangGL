@@ -880,6 +880,100 @@ Before updating pixel data, the depth of the current pixel is compared to the va
 
 The default condition for depth testing is `GL_LESS`, meaning the pixel with a lesser depth value (closer to the camera) will be drawn.
 
+</details>
 
+---
+
+<details><summary> # [W07] </summary>
+
+# Camera/View Space
+- It is necessary to determine when and where to look at in 3D space.
+- The view transformation is created from the parameters controlling the camera.
+
+## Camera Parameters
+- **Position**: Where the camera is located.
+- **Target**: The point the camera is looking at.
+- **Up Vector**: The direction that defines "up" for the camera.
+
+The camera's matrix is the inverse of the transformation matrix that converts from local space to world space.
+
+```c++
+	float x = sinf((float)glfwGetTime() * glm::pi<float>() * 2.0f) * 3.0f;
+	auto cameraPos = glm::vec3(x, 0.0f, 3.0f);
+	auto cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+	auto cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+	// Compute the camera basis vectors (Z, X, Y)
+	// auto cameraZ = glm::normalize(cameraPos - cameraTarget);
+	// auto cameraX = glm::normalize(glm::cross(cameraUp, cameraZ));
+	// auto cameraY = glm::cross(cameraZ, cameraX);
+
+	// Create the camera matrix
+	// auto cameraMat = glm::mat4(
+	// 	glm::vec4(cameraX, 0.0f),
+	// 	glm::vec4(cameraY, 0.0f),
+	// 	glm::vec4(cameraZ, 0.0f),
+	// 	glm::vec4(cameraPos, 1.0f)
+	// );
+
+	// Obtain the view matrix by inverting the camera matrix
+	// auto view = glm::inverse(cameraMat);
+	auto view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
+```
+
+The `glm::lookAt` function computes the view transformation matrix from `cameraPos`, `cameraTarget` (also called `cameraFront`), and `cameraUp`.
+If we calculate the camera position every frame, we can get a different point of view dynamically.
+
+# Interactive Camera
+An interactive camera allows the user to control it using keyboard and mouse inputs.
+We store the camera information within the context class.
+
+```c++
+glm::vec3 m_cameraPos { glm::vec3(0.0f, 0.0f, 3.0f) };
+glm::vec3 m_cameraFront { glm::vec3(0.0f, 0.0f, -1.0f) }; // This represents the direction the camera is facing.
+glm::vec3 m_cameraUp { glm::vec3(0.0f, 1.0f, 0.0f) };
+```
+
+`ProcessInput(GLFWwindow* window)`: This function calculates the camera position based on keyboard input.
+Before rendering, the camera position should be updated by calling `ProcessInput`.
+
+## Resizing the Screen
+We need to adjust the aspect ratio of the perspective projection when the screen size changes.
+Thus, the `context` class should have `Reshape()`, `m_width`, and `m_height` members.
+
+`Reshape()` should be called whenever the window size is changed.
+We can set up a callback in `main.cpp` using `glfwSetFramebufferSizeCallback` to handle resizing.
+
+---
+
+## Object Rotation
+- **Euler Angles**: A common way to represent rotation.
+-> Three angles are used: roll (z-axis), pitch (x-axis), and yaw (y-axis).
+
+Usually, for camera rotation, roll (z-axis) is not used.
+-> The roll is controlled by the up vector.
+Yaw and pitch are typically used to express the direction the camera is facing.
+
+We should include variables for these rotation angles in the `context` class.
+
+### Member Variables:
+- `m_cameraPitch`
+- `m_cameraYaw`
+- `m_cameraControl`
+
+### Member Functions:
+- `m_prevMousePos`
+- `MouseMove`
+- `MouseButton`
+
+These functions update the member variables each frame.
+We need to register GLFW callback functions for handling mouse and keyboard input in the system.
+
+---
+
+**Result:**
+* ![Resulting Image](<./attachedFiles/화면 기록 2024-09-18 오후 3.14.13.gif>)
 
 </details>
+
+---

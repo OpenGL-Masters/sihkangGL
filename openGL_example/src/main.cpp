@@ -7,8 +7,22 @@ void OnFramebufferSizeChange(GLFWwindow *window, int width, int height)
 {
 	SPDLOG_INFO("framebuffer size changed: ({} x {})", width, height);
 
-	// openGL 이 그림을 그릴 화면 위치, 크기 설정. 뷰 포트에 그림이 그려진다.
-	glViewport(0, 0, width, height);
+	auto context = static_cast<Context*>(glfwGetWindowUserPointer(window));
+	context->Reshape(width, height);
+}
+
+void OnCursorPos(GLFWwindow* window, double x, double y)
+{
+	auto context = (Context *)glfwGetWindowUserPointer(window);
+	context->MouseMove(x, y);
+}
+
+void OnMouseButton(GLFWwindow* window, int button, int action, int modifier)
+{
+	auto context = (Context*)glfwGetWindowUserPointer(window);
+	double x, y;
+	glfwGetCursorPos(window, &x, &y);
+	context->MouseButton(button, action, x, y);
 }
 
 void OnKeyEvent(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -86,12 +100,17 @@ int main()
 		return -1;
 	}
 	
+	// 쌩포인터를 윈도우에 유저 포인터로서 세팅해주기.->reshape 을 위해
+	glfwSetWindowUserPointer(window, context.get());
+
 	// 윈도우 생성 직후에는 프레임 버퍼 변경 이벤트가 발생하지 않으므로 첫 호출은 수동으로 함.
 	OnFramebufferSizeChange(window, WINDOW_WIDTH, WINDOW_HEIGHT);
 
 	// 콜백함수를 윈도우에 등록
 	glfwSetFramebufferSizeCallback(window, OnFramebufferSizeChange);
 	glfwSetKeyCallback(window, OnKeyEvent);
+	glfwSetCursorPosCallback(window, OnCursorPos);
+	glfwSetMouseButtonCallback(window, OnMouseButton);
 
 	// glfw loop 실행. 윈도우 닫기 버튼 누르면 정상 종료
 	SPDLOG_INFO("Start main loop");
@@ -103,9 +122,10 @@ int main()
 
 	while (!glfwWindowShouldClose(window))
 	{
+		glfwPollEvents(); // 윈도우와 관련된 키보드, 마우스 이벤트 등을 감지하는. poll() 과 유사한 기능.
+		context->ProcessInput(window);
 		context->Render();
 		glfwSwapBuffers(window);
-		glfwPollEvents(); // 윈도우와 관련된 키보드, 마우스 이벤트 등을 감지하는. poll() 과 유사한 기능.
 	}
 	context.reset();
 	
