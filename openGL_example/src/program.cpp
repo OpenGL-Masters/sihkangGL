@@ -8,6 +8,16 @@ ProgramUPtr Program::Create(const std::vector<ShaderPtr>& shader)
 	return std::move(program);
 }
 
+ProgramUPtr Program::Create(const std::string& vertexShaderFilename,
+						const std::string& fragmentShaderFilename)
+{
+	ShaderPtr vs = Shader::CreateFromFile(vertexShaderFilename, GL_VERTEX_SHADER);
+	ShaderPtr fs = Shader::CreateFromFile(fragmentShaderFilename, GL_FRAGMENT_SHADER);
+	if (!vs || !fs)
+		return nullptr;
+	return std::move(Create({vs, fs}));
+}
+
 bool Program::Link(const std::vector<ShaderPtr>& shaders)
 {
 	// 프로그램의 정수번호 할당.
@@ -54,4 +64,22 @@ void Program::SetUniform(const std::string &name, const glm::mat4& value) const
 {
 	auto loc = glGetUniformLocation(m_program, name.c_str());
 	glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(value));
+}
+
+void Program::SetUniform(const std::string& name, float value) const
+{
+	auto loc = glGetUniformLocation(m_program, name.c_str());
+	glUniform1f(loc, value);
+}
+
+void Program::SetUniform(const std::string& name, const glm::vec3 &value) const
+{
+	auto loc = glGetUniformLocation(m_program, name.c_str());
+	glUniform3fv(loc, 1, glm::value_ptr(value));
+}
+
+void Program::SetUniform(const std::string& name, const glm::vec4 &value) const
+{
+	auto loc = glGetUniformLocation(m_program, name.c_str());
+	glUniform4fv(loc, 1, glm::value_ptr(value));
 }

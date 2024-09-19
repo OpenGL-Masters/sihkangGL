@@ -23,6 +23,7 @@ private:
 	Context() {}
 	bool Init();
 	ProgramUPtr m_program;
+	ProgramUPtr m_simpleProgram;
 
 	VertexLayoutUPtr m_vertexLayout;
 	BufferUPtr m_vertexBuffer;
@@ -30,7 +31,25 @@ private:
 	TextureUPtr m_texture1;
 	TextureUPtr m_texture2;
 
-	glm::vec4 m_clearColor { glm::vec4(0.1f, 0.3f, 0.1f, 0.0f) };
+	bool m_animation { true } ;
+
+	glm::vec4 m_clearColor { glm::vec4(0.1f, 0.2f, 0.3f, 0.0f) };
+
+	struct Light
+	{
+		glm::vec3 position { glm::vec3(3.0f, 3.0f, 3.0f) };
+		glm::vec3 ambient { glm::vec3(0.1f, 0.1f, 0.1f) };
+		glm::vec3 diffuse { glm::vec3(0.5f ,0.5f, 0.5f ) };
+		glm::vec3 specular { glm::vec3(1.0f, 1.0f, 1.0f) };
+	}; Light m_light;
+
+	struct Material
+	{
+		TextureUPtr diffuse;
+		TextureUPtr specular;
+		// glm::vec3 specular { glm::vec3(0.5f, 0.5f, 0.5f) };
+		float shininess { 32.0f };
+	}; Material m_material;
 
 	float m_cameraPitch { 0.0f }; // 60분법 각도
 	float m_cameraYaw { 0.0f } ;

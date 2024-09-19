@@ -1038,3 +1038,82 @@ For practical examples, you can refer to the `imgui_demo.cpp` file, which demons
 
 </details>
 
+<details><summary> # [W08] </summary>
+
+# Lighting
+Lighting defines the color on the surface of objects.
+It involves the **light source**, **material**, and **various complex physical phenomena**. For simplicity, we use the **Phong lighting model** to describe the illumination process.
+
+## Illumination Model
+Illumination models can be classified into two types based on how they handle reflected light.
+
+- **Reflection light**: Light that is bounced off an object's surface.
+
+1. **Local Illumination Model**: Does not account for reflected light from other objects or surfaces.
+2. **Global Illumination Model**: Considers reflected light from other objects and surfaces, but at a higher computational cost.
+
+## Phong’s Illumination Model
+The Phong model calculates the surface color using three components:
+- **Ambient** light
+- **Diffuse** light
+- **Specular** light
+
+The final color is determined by combining these three lighting terms.
+
+### Ambient Light
+Ambient light is the general light that reaches all objects in the scene. It is unaffected by the object's normal vector or the light direction, meaning it is **constant** across the object's surface.
+
+Ambient light is calculated as a combination of **light color** and **ambient strength**, which is then applied to the object’s color. This calculation happens in the fragment shader for each pixel.
+
+### Diffuse Light
+Diffuse light occurs when light hits an object’s surface and scatters in all directions. The intensity of the diffuse light depends on the angle between the light direction and the surface’s normal vector.
+
+When the light direction is perpendicular to the object’s surface (the angle between them is 0 degrees), the diffuse light is at its strongest. This is calculated as the **dot product** of the light direction and the normal vector.
+
+The calculation of diffuse light requires:
+- **Light direction**
+- **Normal vector**
+- **Strength of the light source**
+
+To calculate diffuse lighting in **world space**, the position and normal vectors must be transformed from local space to world space using the **model transformation matrix** in the vertex shader.
+
+For accurate normal transformation, the normal vector should be multiplied by the **inverse transpose of the model matrix**, because normals are vectors, not points.
+
+In the fragment shader, the normals may not be normalized, so they need to be **re-normalized**.
+
+### Specular Light
+Specular light is the reflection of light on an object’s surface, creating shiny highlights. Specular lighting is strongest when the **view direction** aligns with the **reflected light direction** (calculated as the dot product of the reflection vector and the view vector).
+
+Key factors in specular lighting include:
+- **Specular strength**: Controls the brightness of the specular highlight.
+- **Shininess**: Controls the size or spread of the specular highlight.
+
+The final color is computed by combining the **ambient**, **diffuse**, and **specular** terms in the fragment shader.
+
+In the Phong model:
+- `reflect(lightDir, normal)` calculates the reflection vector.
+- The dot product of the **reflection vector** and **view direction** gives the intensity of the reflected light.
+  
+### Final Color Calculation
+The final object color is a combination of **light color** and **material color**:
+```cpp
+finalColor = ambient + diffuse + specular;
+```
+
+The material and light properties can be organized into structures for cleaner code:
+```cpp
+struct Light { /* properties */ };
+struct Material { /* properties */ };
+```
+
+### Lighting Maps
+In the Phong model, the **ambient**, **diffuse**, and **specular** components can be replaced by **texture maps** for more complex lighting effects.
+
+By using texture maps, the object’s material properties can vary across its surface. For example, the diffuse and specular terms can be extracted from **texture images**. The fragment shader samples the texture to obtain the color for lighting calculations.
+
+### Summary
+1. The Phong lighting model is a simple yet effective method for approximating real-world lighting in graphics.
+2. **Ambient**, **diffuse**, and **specular** terms determine the final color of an object.
+3. Texture maps can be used to enhance the realism by replacing material properties like diffuse and specular with more detailed texture data.
+
+</details>

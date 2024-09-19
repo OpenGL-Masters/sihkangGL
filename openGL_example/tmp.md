@@ -1,59 +1,73 @@
-# IMGUI
+# lighting
+defining the color on the surface of the objects.
+- light source, material, complicated physical phenomena
+We chose Phong model to descript lighting.
 
-## GUI IN OPENGL
-1. Using GUI framework.
-construct the GUI screen and make openGL surface.
--> win32, MFC, QT, Cocoa, android...
+## ILLUMINATION MODEL
+- There are two cases in illumination model depending on reflection light.
+reflection light: the light made by the collision between the other obj and the light.
 
-2. making GUI component in inside of openGL screen. Then act on event by using library.
--> ImGui !
+local / global illumination model
+local : no considering reflecting light;
+global : considering relfecting light. -> high costs, high performance.
+
+## Phong's Illumination model
+This model expresses the color between the light and objects by 3 terms.
+- ambient / diffuse / specular
+Phong model determines the color by adding above three terms of light.
+
+### Ambient light
+The basic light that reached to every objects. It is independent to normal vector and light direction.
+passed by constant value.
+
+it is composed of [light color, ambient strength] with object color.
+These factors will be added in fragment shader to calculate for each pixels.
+
+### Diffuse light
+When the light collide to obj surface, the light spreaded every directions.
+The amount of the diffuse light is defined by light source's direction and normal vector.
+If the light source is orthogonal to objects, the diffuse light is maximum. (dot product of light and normal vector)
+
+It is composed of light direction, strength and normal direction.
+for normal vector, we need to add the normal value of the vertices.
+
+gl_Position : the coordinatev value of canonical space.
+If we want to calculate diffuse light, it could be done in World space. So, we transform the position and normal from local to world by model transformation.
+
+the position calculated in vertex shader will be passed to fragment shader.
+
+But the normal should be transformed by **inverse transpose of modelTransform**. because it is a vector, not a point.
+
+the normal of pixels size might not be 1. so, the normal is re-normalized in fragment shader.
+
+### SPECULAR LIGHT
+
+the light reflected by the object surface.
+when the view direction and reflected direction is same, the light is the strongest. (dot product of reflection and view)
+
+the calculation of lighting will be done on each pixels. so, GPU should calculate the lighting for efficiency.
+-> Making vertex, fragment shader.
+
+as we said, the Phong model add three terms of light.
+
+reflect(light, normal) function returns the reflected vector.
+Dot product of reflectVector, viewVector is how much reflected light come in.
+
+specularStrength is the strength of the light.
+specularShininess is control the area of the reflected light.
 
 ---
 
-github.com/ocornut/imgui
-open source library made by Omar Cornut
-Immediate-Mode GUI.
-Directly drawing the GUI components by using graphics API.
+final color is determined by light color and material(object) color.
+ambient + diffuse + specular -> color.
 
-## Feature of IMGUI
-- Immediate Mode GUI: 
-make ui components every rendering loops.
-this feature is easy to use. but it might be mixed with other code treating the graphics objects.
+we can make the variables to one structure.
+-> struct Light, struct Material.
 
-- separating Rendering backend 
-: It can be used with several graphics API.
-if you want to implement directly, you can code rendering backend.
 
-- There is a GUI component for graphics programming.
-: vector editor, color picker. 
+### Lighting maps
+ambient, diffuse, specular terms are compose of material.
+these could be replaced to texture map.
 
-- Nearly zero-dependency
-: easy to build.
-
-## Install IMGUI
-There is no makefile and cmkae in IMGUI repo.
-so, download the sourcefiles and include it in your repo. menually.
-
-When you run the exe, UI component by ImGui is overlapping on openGL screen.
-Also it can be resized and moved by mouse.
-
-- ImGui_ImplGlfw_NewFrame() implemented in main loop updates the screen size and mouse status from GLFWwindow.
-
-- So, We don't need to connect callback function. 
-
-## UI / PARAMETER BINDING
-Add the camera parameters, camers reset button and clear color in UI.
-
-One function responed to one UI component.
-and the function returns boolean type data.
-if the return is true, the UI component has been changed.
-the action logic about UI event can be coded by if statement.
-
-## IMGUI CALLBACK SETTING
-the callback function we already made can include the ImGUi callback.
-Include the ImGui callback action in these callback function or there is no callback function, you can write it like opengl callback function.
-
-## How to study ImGui?
-There is no documents for ImGui guide. so all the information about UI component is in `imgui.h`.
-`imgui_demo.cpp` has an examples of imgui functions. refer it for using.
-
+Download the texture image for lighting.
+the color in texture map will replace the material's diffuse and specular term. the fragment shader will pick up the texture point and use the point's color for lighting.
