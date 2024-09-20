@@ -1116,4 +1116,6 @@ By using texture maps, the object’s material properties can vary across its su
 2. **Ambient**, **diffuse**, and **specular** terms determine the final color of an object.
 3. Texture maps can be used to enhance the realism by replacing material properties like diffuse and specular with more detailed texture data.
 
+![Lighting_map](./attachedFiles/lighting_map_applied.png)
+
 </details>
