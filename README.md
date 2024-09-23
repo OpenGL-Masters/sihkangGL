@@ -1118,4 +1118,182 @@ By using texture maps, the object’s material properties can vary across its su
 
 ![Lighting_map](./attachedFiles/lighting_map_applied.png)
 
+# Light Casters
+
+There are three common types of light casters in OpenGL:
+
+- **Directional Light**
+- **Point Light (Omni Light)**
+- **Spot Light**
+
+---
+
+## Directional Light
+
+Directional light simulates a light source that is infinitely far away, causing light rays to come in parallel. An example of directional light is sunlight.
+
+- **Position Irrelevant**: Since the light source is considered to be at an infinite distance, its position does not affect the lighting calculations.
+- **Direction is Key**: The primary factor for directional light is its direction.
+
+To implement directional light:
+
+1. **Convert Position to Direction**: Instead of using a position vector, use a direction vector to represent the light's direction.
+2. **Send Direction to Shader**: Set the direction of the light and pass this information to the shader as a uniform variable.
+3. **Modify Shader Code**: Update your fragment shader (`lighting.fs`), context header (`context.h`), and context implementation (`context.cpp`) to handle the directional light's direction information.
+![alt text](./attachedFiles/dl.png)
+---
+
+## Point Light
+
+Point light emits light uniformly in all directions from a single point in space, similar to a light bulb.
+
+- **Intensity Decreases with Distance**: The intensity of a point light diminishes with the square of the distance from the light source (`r²` attenuation).
+- **Local Illumination Limitation**: The basic local illumination model does not account for reflected light, making the lighting appear darker than in reality.
+
+### Attenuation Model
+
+To address the limitation of the local illumination model, an **attenuation model** is introduced.
+
+- **Parameters**:
+  - **\( K_c \)** (constant term)
+  - **\( K_l \)** (linear term)
+  - **\( K_q \)** (quadratic term)
+
+- **Attenuation Formula**:
+  \[
+  F = \frac{1.0}{K_c + K_l \cdot d + K_q \cdot d^2}
+  \]
+  where \( d \) is the distance from the light source to the object's surface.
+
+### Implementation Steps for Point Light
+
+1. **Add Position and Attenuation Properties**: Extend your light structure to include position and attenuation factors.
+2. **Refer to Ogre3D Engine Parameters**: Use parameters based on the maximum distance of the point light as defined in the Ogre3D engine to implement realistic attenuation.
+
+![alt text](./attachedFiles/pl.png)
+
+---
+
+## Spot Light
+
+Spot light emits light in a specific direction within a cone, creating focused and directional lighting effects. Examples include flashlights and stage lighting.
+
+- **Properties**:
+  - **Direction**: The direction in which the spotlight is pointing.
+  - **Angle**: The inner and outer angles that define the cone of the spotlight.
+  - **Position**: The location of the spotlight in the scene.
+
+### Soft Outline of Light
+
+To create a soft edge for the spotlight, both inner and outer angles from the light's direction are used.
+
+- **Inside Inner Angle**: Light intensity is at 100%.
+- **Between Inner and Outer Angles**: Light intensity decreases smoothly from 100% to 0%.
+
+- **Intensity Calculation**:
+  \[
+  \text{Intensity} = \frac{\cos(x) - \cos(\text{outer})}{\cos(\text{inner}) - \cos(\text{outer})}
+  \]
+  where \( x \) is the angle between the light direction and the point being lit.
+
+![alt text](./attachedFiles/sl.png)
+---
+
+## Multiple Lights
+
+Handling multiple lights in a scene involves processing each light type within the fragment shader.
+
+### Fragment Shader Example
+
+```glsl
+out vec4 FragColor;
+
+void main(){
+    vec3 output = vec3(0.0);
+    
+    // Adding directional light result
+    output += calculateDirectionalLight();
+    
+    // Adding point lights result
+    for (int i = 0; i < nr_of_point_lights; i++)
+        output += calculatePointLight(i);
+    
+    // Adding spot light result
+    output += calculateSpotLight();
+    
+    FragColor = vec4(output, 1.0);
+}
+```
+
+- **Directional Light**: Added once since there's typically one direction.
+- **Point Lights**: Iterated over multiple point lights to accumulate their contributions.
+- **Spot Light**: Added based on spotlight calculations.
+
+### Implementing Handheld Light (Headlight)
+
+If you want to implement a headlight (a light that moves with the camera, like a flashlight):
+
+1. **Align Light with Camera**: Set the light's position and direction to match the camera's position and viewing direction.
+2. **Update Shader Uniforms**: Pass the camera's position and direction to the shader as uniform variables to ensure the light moves correctly with the camera.
+
+</details>
+
+<details><summary> # [W09] </summary>
+
+# Object Loader
+Making 3D obj by pointing each vertex is hard.
+-> Objects are designed in 3D modeling tools.
+
+## 3D modeling tool
+create 3D model and modify.
+-> modeling, sculpting, UV unwrapping, rigging, animation ...
+e.g.) 3D studio Max, maya, Blender 3D.
+
+## AASIMP
+open asset import library.
+
+address: github.com/assimp/assimp
+
+support multiple language and 3D model files.
+cross-platform. c/c++ interface.
+assimp load the obj files to our program.
+
+## Refactoring
+### buffer class modifying
+replace dataSize to stride and count.
+
+`dataSize = stride * count`
+
+### Adding mesh.h, mesh.cpp
+we will load the mesh data from obj file.
+mesh consist of the information of vertex buffer and vertex Layout.
+So, mesh class should have these information(vertices, indices).
+
+in mesh object, set the vertex, index buffer and bind to vertexArray.
+
+### why is VertexLayout unique pointer, but Buffer is shared pointer?
+VBO, EBO can be used for another VAO. (reusable)
+VAO is only for certain mesh.
+
+## Scene Tree(graph)
+Method that manage the 3D scene as a tree structure.
+
+child's transform information(position/rotation/scale) is described by parent's local coordinate.
+
+we need to process importing external obj file by assimp for using in our program.
+
+This process will be implemented in model class recursively because the scene is structed by tree. the data of several meshes will be loaded by Load function. 
+
+the function to access to child node is `processNode()`. the function to load mesh data(VBO, EBO) is `processMesh()`
+
+Let the model instance be added in context class to call the draw function.
+
+context::init() -> loading obj file by Model::Load().
+Then the mesh data loaded will be stored in model instance.
+
+the information of material is also needed to be loaded like vertex information. Model, Mesh class need material structure for storing material information. but model class should be array member variable. (because model class control several mesh. mesh is one material)
+
+The information of material in obj file is loaded in mesh class. and it is also pushed in model class' vector array.
+the material information will be passed before the mesh draws by Material::SetToProgram function that connects program and shader.
+
 </details>

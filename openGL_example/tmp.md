@@ -1,73 +1,42 @@
-# lighting
-defining the color on the surface of the objects.
-- light source, material, complicated physical phenomena
-We chose Phong model to descript lighting.
+# Object Loader
+Making 3D obj by pointing each vertex is hard.
+-> Objects are designed in 3D modeling tools.
 
-## ILLUMINATION MODEL
-- There are two cases in illumination model depending on reflection light.
-reflection light: the light made by the collision between the other obj and the light.
+## 3D modeling tool
+create 3D model and modify.
+-> modeling, sculpting, UV unwrapping, rigging, animation ...
+e.g.) 3D studio Max, maya, Blender 3D.
 
-local / global illumination model
-local : no considering reflecting light;
-global : considering relfecting light. -> high costs, high performance.
+## AASIMP
+open asset import library.
 
-## Phong's Illumination model
-This model expresses the color between the light and objects by 3 terms.
-- ambient / diffuse / specular
-Phong model determines the color by adding above three terms of light.
+address: github.com/assimp/assimp
 
-### Ambient light
-The basic light that reached to every objects. It is independent to normal vector and light direction.
-passed by constant value.
+support multiple language and 3D model files.
+cross-platform. c/c++ interface.
+assimp load the obj files to our program.
 
-it is composed of [light color, ambient strength] with object color.
-These factors will be added in fragment shader to calculate for each pixels.
+## Refactoring
+### buffer class modifying
+replace dataSize to stride and count.
 
-### Diffuse light
-When the light collide to obj surface, the light spreaded every directions.
-The amount of the diffuse light is defined by light source's direction and normal vector.
-If the light source is orthogonal to objects, the diffuse light is maximum. (dot product of light and normal vector)
+`dataSize = stride * count`
 
-It is composed of light direction, strength and normal direction.
-for normal vector, we need to add the normal value of the vertices.
+### Adding mesh.h, mesh.cpp
+we will load the mesh data from obj file.
+mesh consist of the information of vertex buffer and vertex Layout.
+So, mesh class should have these information(vertices, indices).
 
-gl_Position : the coordinatev value of canonical space.
-If we want to calculate diffuse light, it could be done in World space. So, we transform the position and normal from local to world by model transformation.
+in mesh object, set the vertex, index buffer and bind to vertexArray.
 
-the position calculated in vertex shader will be passed to fragment shader.
+### why is VertexLayout unique pointer, but Buffer is shared pointer?
+VBO, EBO can be used for another VAO. (reusable)
+VAO is only for certain mesh.
 
-But the normal should be transformed by **inverse transpose of modelTransform**. because it is a vector, not a point.
+## Scene Tree(graph)
+Method that manage the 3D scene as a tree structure.
 
-the normal of pixels size might not be 1. so, the normal is re-normalized in fragment shader.
-
-### SPECULAR LIGHT
-
-the light reflected by the object surface.
-when the view direction and reflected direction is same, the light is the strongest. (dot product of reflection and view)
-
-the calculation of lighting will be done on each pixels. so, GPU should calculate the lighting for efficiency.
--> Making vertex, fragment shader.
-
-as we said, the Phong model add three terms of light.
-
-reflect(light, normal) function returns the reflected vector.
-Dot product of reflectVector, viewVector is how much reflected light come in.
-
-specularStrength is the strength of the light.
-specularShininess is control the area of the reflected light.
-
----
-
-final color is determined by light color and material(object) color.
-ambient + diffuse + specular -> color.
-
-we can make the variables to one structure.
--> struct Light, struct Material.
+child's transform information(position/rotation/scale) is described by parent's local coordinate.
 
 
-### Lighting maps
-ambient, diffuse, specular terms are compose of material.
-these could be replaced to texture map.
-
-Download the texture image for lighting.
-the color in texture map will replace the material's diffuse and specular term. the fragment shader will pick up the texture point and use the point's color for lighting.
+model.h를 만ㄷ르어보자.
