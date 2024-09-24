@@ -58,17 +58,17 @@ void main()
 		result += (diffuse + specular) * intensity;
 	}
 	
-	// vec3 pixelNorm = normalize(normal);
-	// float diff = max(dot(pixelNorm, lightDir), 0.0);
-	// vec3 diffuse = diff * texColor * light.diffuse;
+	vec3 pixelNorm = normalize(normal);
+	float diff = max(dot(pixelNorm, lightDir), 0.0);
+	vec3 diffuse = diff * texColor * light.diffuse;
 
-	// vec3 specColor = texture(material.specular, texCoord).xyz;
-	// vec3 viewDir = normalize(viewPos - position);
-	// vec3 reflectDir = reflect(-lightDir, pixelNorm);
-	// float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-	// vec3 specular = spec * specColor * light.specular;
+	vec3 specColor = texture(material.specular, texCoord).xyz;
+	vec3 viewDir = normalize(viewPos - position);
+	vec3 reflectDir = reflect(-lightDir, pixelNorm);
+	float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+	vec3 specular = spec * specColor * light.specular;
 
-	// vec3 result = (ambient + diffuse + specular) * attenuation; // 빛의 감쇠 적용.
+	result = (ambient + diffuse + specular) * attenuation; // 빛의 감쇠 적용.
 	result *= attenuation;
 	fragColor = vec4(result, 1.0);
 }

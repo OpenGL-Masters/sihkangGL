@@ -1297,3 +1297,165 @@ The information of material in obj file is loaded in mesh class. and it is also 
 the material information will be passed before the mesh draws by Material::SetToProgram function that connects program and shader.
 
 </details>
+
+<details><summary> # [W10] </summary>
+
+# Depth Test
+Let's learn about the depth test for rendering. If there are many meshes, whether an object is in front of another is important for drawing a picture. The depth test determines what is in front. If an object is behind something, it should be hidden.
+
+**Depth Buffer**: A buffer storing the depth value (z value).  
+**Depth Test**: Compares the pixel's depth value with the value stored in the depth buffer. If the result is true, the pixel is drawn; otherwise, it is discarded.
+
+## Depth Test Functions
+
+- **Using Depth Test**:  
+  `glEnable(GL_DEPTH_TEST);`
+
+- **Not Using Depth Test**:  
+  `glDisable(GL_DEPTH_TEST);`  
+  (Equivalent to `glEnable(GL_DEPTH_TEST); glDepthFunc(GL_ALWAYS);`  
+  → The object pixel drawn later covers the pixel drawn previously.)
+
+- **Stop Updating Depth Buffer**:  
+  `glDepthMask(GL_FALSE);`
+
+- **Set Initial Value of Depth Buffer**:  
+  `glClearDepth(1.0f);`
+
+- **Set Comparing Operator**:  
+  `glDepthFunc(GL_LESS);`  
+  Options: `GL_ALWAYS`, `GL_NEVER`, `GL_LESS`, `GL_LEQUAL`, `GL_GREATER`, `GL_GEQUAL`, `GL_EQUAL`, `GL_NOTEQUAL`.
+
+## Depth Visualization
+
+### Distortion of Depth Values
+Through perspective projection, the depth value is normalized to the range of 0 to 1, divided by w. This normalization causes distortion (Z-fighting).
+
+### Solutions for Z-fighting
+1. Separate each plane so they are not too close.
+2. Avoid setting the near value of the camera too small.
+3. Use a more accurate depth buffer (more bits) for precise value representation.
+
+---
+
+# Stencil Buffer
+An 8-bit integer buffer that allows drawing on certain pixels.
+
+## Stencil Test
+The stencil test is performed before the depth test and has many applications.
+
+```cpp
+glEnable(GL_STENCIL_TEST); // Initialize stencil test
+glStencilMask(0xFF);       // Set the stencil buffer's bits to be updated
+glStencilFunc(GL_EQUAL, 1, 0xFF); // Set the function for the stencil test
+```
+
+- **glStencilOp(sfail, dpfail, dppass)**  
+  - `sfail`: Operation when the stencil test fails.  
+  - `dpfail`: Operation when the stencil test passes but the depth test fails.  
+  - `dppass`: Operation when both the stencil and depth tests pass.  
+
+**Options**:
+- `GL_KEEP`: Keep the current stencil buffer value.
+- `GL_ZERO`: Set the stencil buffer to 0.
+- `GL_REPLACE`: Replace the stencil value set by `glStencilFunc`.
+- `GL_INVERT`: Bitwise invert the stencil buffer value.
+- `GL_INCR`: Increment the stencil buffer value (if it’s max, it stays).
+- `GL_INCR_WRAP`: Increment but wrap to 0 if the value is max.
+- `GL_DECR`: Decrement the stencil buffer value (if it’s min, it stays).
+- `GL_DECR_WRAP`: Decrement but wrap to 255 if the value is min.
+
+## Usage of Stencil Buffer - Outlining
+1. Clear the stencil buffer to 0.
+2. Set stencil test to `GL_ALWAYS`.
+3. Set the stencil value to 1 for the drawn part.
+4. Render the object.
+5. Disable depth test and stencil updates.
+6. Draw a slightly larger object, setting the shader for the outline.
+7. Render only where the stencil value is not 1.
+8. Re-enable the depth test and set stencil function to `GL_KEEP`.
+
+```cpp
+// Set the stencil test options
+glEnable(GL_STENCIL_TEST);
+glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+glStencilFunc(GL_ALWAYS, 1, 0xFF);
+glStencilMask(0xFF);
+
+// Draw box -> the pixel of the box passes the stencil test
+modelTransform =
+    glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.75f, 2.0f)) *
+    glm::rotate(glm::mat4(1.0f), glm::radians(20.0f), glm::vec3(0.0f, 1.0f, 0.0f)) *
+    glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
+transform = projection * view * modelTransform;
+m_program->SetUniform("transform", transform);
+m_program->SetUniform("modelTransform", modelTransform);
+m_box2Material->SetToProgram(m_program.get());
+m_box->Draw(m_program.get());
+
+// Draw a slightly larger box's pixel that passes the stencil test -> outline
+glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+glStencilMask(0x00);
+glDisable(GL_DEPTH_TEST);
+m_simpleProgram->Use();
+m_simpleProgram->SetUniform("color", glm::vec4(1.0f, 1.0f, 0.5f, 1.0f));
+m_simpleProgram->SetUniform("transform", transform * 
+    glm::scale(glm::mat4(1.0f), glm::vec3(1.05f, 1.05f, 1.05f)));
+m_box->Draw(m_simpleProgram.get());
+
+// Return the settings 
+glEnable(GL_DEPTH_TEST);
+glDisable(GL_STENCIL_TEST);
+glStencilFunc(GL_ALWAYS, 1, 0xFF);
+glStencilMask(0xFF);
+```
+
+---
+
+# Blending
+Blending calculates the pixel we want to draw alongside the pixel in the framebuffer to render translucent objects.
+
+- **Initialization**:  
+  `glEnable(GL_BLEND);`
+
+- **Blending Function**:  
+  `glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);`  
+  This sets the F value of the blending formula.
+
+**Blending Formula**:  
+`C_result = C_source * F_source + C_destination * F_destination`
+
+The `glBlendEquation` function sets the middle operator of the formula, and `glBlendFuncSeparate` can set different blending factors for color and alpha values.
+
+## Problem with Depth Test
+The order of drawing can affect appearance.  
+→ Sort the object drawing order based on the viewing direction (for order-independent transparency).
+
+### Face Culling
+By default, counter-clockwise (CCW) vertices are considered the front face. This allows for not drawing the back face.
+
+```cpp
+glEnable(GL_CULL_FACE); // Enable face culling
+glDisable(GL_CULL_FACE); // Disable face culling
+glFrontFace(GL_CCW); // Set front face as CCW
+glCullFace(GL_BACK); // Do not draw back faces
+glCullFace(GL_FRONT); // Do not draw front faces
+```
+
+---
+
+# FrameBuffer
+A framebuffer combines the color, depth, and stencil buffers.
+
+When the OpenGL context is generated by GLFW, a framebuffer for drawing to the window is automatically created.
+
+Developers can use and generate framebuffers directly for post-processing or using the rendered scene as a texture.
+
+## Method of Using Framebuffer
+1. Generate a framebuffer object.
+2. Generate a render buffer (for color, depth, or stencil).
+3. Connect the render buffer to the framebuffer.
+4. Check if the render buffer combination can be used for the framebuffer.
+
+
+</details>
