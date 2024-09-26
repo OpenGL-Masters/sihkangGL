@@ -1459,3 +1459,101 @@ Developers can use and generate framebuffers directly for post-processing or usi
 
 
 </details>
+
+
+<details><summary> # [W11] </summary>
+
+# Cubemap
+- A texture map consists of six 2D texture planes.
+- It is useful for rendering environments.
+
+From the origin, a 3D direction vector is used to sample texture pixels.
+Cubemaps allow you to render environments using just a few vertices.
+
+In one texture object, six texture images are attached.
+
+## Environment Mapping
+Environment mapping is a computer graphics technique used to simulate the appearance of reflective or refractive surfaces by mapping the surrounding environment onto the surface of an object. 
+
+It is commonly used for rendering shiny objects like mirrors, water, glass, and metal surfaces.
+
+If you want a more dynamic effect, **dynamic environment mapping** is useful. It updates the image every frame by rendering each face of the cubemap per frame (this usually requires a framebuffer).
+
+Rendering for each cubemap face needs to be done six times per frame.
+
+# Advanced Data Management
+
+- **Part copy**: `glBufferSubData(target, offset, size, ptr)`
+  Copies data from `ptr` to the buffer bound to `target`, starting at `offset` and spanning `size` bytes.
+
+- **Direct access**: `glMapBuffer()`, `glUnmapBuffer()`
+  - `glMapBuffer(target, usage)`: Maps the buffer bound to `target` into the client's address space for read/write access, based on `usage`.
+  - `glUnmapBuffer(target)`: Unmaps the buffer from client access after operations are done.
+
+- **Copy buffer to buffer**: `glCopyBufferSubData()`
+  - `glCopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size)`: Copies data from the buffer bound to `readTarget` starting at `readOffset` to the buffer bound to `writeTarget` starting at `writeOffset`.
+
+- **Update texture data**: `glTexSubImage2D()`
+  - Updates part of a 2D texture with new data from CPU memory, without reallocating the texture.
+
+# Advanced GLSL
+
+## Built-in Variables
+
+- **gl_PointSize**: Specifies the size of points. It requires enabling `GL_PROGRAM_POINT_SIZE`.
+  
+- **gl_VertexID**: Gives the index of the vertex being processed in the vertex shader.
+
+- **gl_FragCoord**: Gives the screen coordinates of the fragment in the fragment shader.
+
+- **gl_FrontFacing**: A boolean variable in the fragment shader that indicates if the fragment belongs to a front-facing triangle, useful for applying different materials to the front and back.
+
+- **gl_FragDepth**: Allows manual control of the fragment's depth value in the fragment shader. Note that using `gl_FragDepth` disables early depth testing.
+
+### Interface Blocks
+An interface block is a way to manage multiple `in` and `out` variables between shaders (e.g., between vertex and fragment shaders). It's like a `struct`, and it helps to manage shader variables more efficiently. The block name must be the same between shaders, but individual variables within the block can have different names.
+
+## Uniform Buffer Object (UBO)
+A **Uniform Buffer Object** allows global uniform values to be shared across multiple shaders efficiently.
+
+1. Create a buffer with `glGenBuffers()`.
+2. Bind the buffer to the `GL_UNIFORM_BUFFER` target.
+3. Copy data into it using `glBufferData()`.
+4. Set memory layout (e.g., `layout (std140)`) for efficient access.
+
+## Geometry Shader
+The **geometry shader** is a shader stage between the vertex and fragment shaders in the OpenGL pipeline. It allows you to create or modify geometric shapes from the primitives it receives.
+
+### Features of Geometry Shaders:
+1. **Processing Primitives**: A geometry shader works on primitives such as points, lines, or triangles and can modify or generate new ones.
+2. **Creation and Modification**: It can create new vertices, and thus new geometry, from the input data.
+
+### Advantages:
+- You can dynamically modify or generate new geometry without CPU intervention.
+
+### Limitations:
+- Performance cost: creating too many vertices can reduce frame rates significantly.
+- It is generally less efficient than the tessellation shader for complex geometry creation.
+
+## Instancing
+Instancing allows multiple instances of an object to be drawn with a single draw call, reducing CPU-GPU communication overhead.
+
+- **gl_InstanceID**: A built-in variable in the vertex shader that uniquely identifies each instance.
+
+### Instancing Methods
+1. **Uniform-based Instancing**: Passes instance data through uniforms. It is easy to implement but less efficient for many instances.
+2. **VBO-based Instancing**: Instance data is stored in a vertex buffer object (VBO), allowing the GPU to handle the data more efficiently. It requires more setup and memory but performs better.
+
+## Anti-Aliasing
+Anti-aliasing smoothens the appearance of edges in images.
+
+### Supersampling Anti-Aliasing (SSAA)
+Renders at a higher resolution and then downsamples to the display resolution.
+
+### Multisample Anti-Aliasing (MSAA)
+MSAA is a more efficient anti-aliasing technique built into OpenGL. It takes multiple samples per pixel within the geometry and averages them to smooth edges.
+
+- The default framebuffer usually supports MSAA. For off-screen MSAA, you need to create multisample versions of the framebuffer, texture, and renderbuffer.
+
+
+</details>
