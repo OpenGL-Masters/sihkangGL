@@ -83,3 +83,60 @@ void Texture::SetTextureFormat(int width, int height, uint32_t format) {
 		m_format, GL_UNSIGNED_BYTE,
 		nullptr);
 }
+
+CubeTextureUPtr CubeTexture::CreateFromImages(const std::vector<Image*>& images) 
+{
+	auto texture = CubeTextureUPtr(new CubeTexture());
+	if (!texture->InitFromImages(images))
+		return nullptr;
+	return std::move(texture);
+}
+
+CubeTexture::~CubeTexture() 
+{
+	if (m_texture) 
+	{
+		glDeleteTextures(1, &m_texture);
+	}
+}
+
+void CubeTexture::Bind() const 
+{
+	glBindTexture(GL_TEXTURE_CUBE_MAP, m_texture);    // 위쪽 텍스쳐 클래스의 경우 바인딩 타겟이 GL_TEXTURE_2D였으나 여기선 CUBE_MAP.
+	// CUBE_MAP 타겟이 따로 있다. 큐브맵에서는 이걸 이용.
+}
+
+// 6 면의 이미지를 받아서 하나의 큐브 텍스쳐로 만들어서 6면에다 복사해서 텍스쳐를 초기화함.
+bool CubeTexture::InitFromImages(const std::vector<Image*>& images) 
+{
+	glGenTextures(1, &m_texture);
+	Bind();
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); 	// z축에 해당하는 좌표까지 고려해야해서 WRAP_R까지.
+
+	for (uint32_t i = 0; i < (uint32_t)images.size(); i++) 
+	{
+		auto image = images[i];
+		GLenum format = GL_RGBA;
+		switch (image->GetChannelCount()) 
+		{
+			default: break;
+			case 1: format = GL_RED; break;
+			case 2: format = GL_RG; break;
+			case 3: format = GL_RGB; break;
+		}
+
+		//GL_TEXTURE_CUBE_MAP_POSITIVE_X ~ GL_TEXTURE_CUBE_MAP_NEGATIVE_Z target을 순차적으로 (i) 를 더해주면서 6면의 이미지 텍스쳐를 복사한다.
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB,
+			image->GetWidth(), image->GetHeight(), 0,
+			format, GL_UNSIGNED_BYTE,
+			image->GetData()
+		);
+	}
+
+	return true;
+}

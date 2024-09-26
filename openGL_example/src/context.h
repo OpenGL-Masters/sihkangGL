@@ -30,7 +30,7 @@ private:
 	ProgramUPtr m_textureProgram;
 	ProgramUPtr m_postProgram;
 
-	float m_gamma { 0.0f };
+	float m_gamma { 1.0f };
 
 	MeshUPtr m_box;
 	MeshUPtr m_plane;
@@ -66,6 +66,7 @@ private:
 	MaterialPtr m_box2Material;
 	TexturePtr m_windowTexture;
 
+
 	float m_cameraPitch { -20.0f }; // 60분법 각도
 	float m_cameraYaw { 0.0f } ;
 	glm::vec3 m_cameraPos { glm::vec3(0.0f, 2.5f, 8.0f) };
@@ -73,6 +74,17 @@ private:
 	glm::vec3 m_cameraUp { glm::vec3(0.0f, 1.0f, 0.0f) };
 
   	FramebufferUPtr m_framebuffer;
+
+	CubeTextureUPtr m_cubeTexture;
+  	ProgramUPtr m_skyboxProgram;
+	ProgramUPtr m_envMapProgram;
+
+	TexturePtr m_grassTexture;
+	ProgramUPtr m_grassProgram;
+	std::vector<glm::vec3> m_grassPos;
+
+	BufferUPtr m_grassPosBuffer;
+	VertexLayoutUPtr m_grassInstance;
 
 	int m_width { WINDOW_WIDTH };
 	int m_height { WINDOW_HEIGHT };

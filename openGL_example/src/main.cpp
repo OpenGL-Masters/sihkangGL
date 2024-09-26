@@ -75,7 +75,7 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3); // openGL 3.3 
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // opengl profile을 core profile로 설정
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // macOS에서 필요할 수 있음 deprecated된 기능 사용 방지.
-
+	glfwWindowHint(GLFW_SAMPLES, 4); // sample 5개를 쓰는 멀티샘플
 
 	// glfw 윈도우 생성, 실패 시 에러 출력 후 종료
 	SPDLOG_INFO("Create glfw window");

@@ -27,10 +27,25 @@ private:
 	void SetTextureFormat(int width, int height, uint32_t format);
 
 	uint32_t m_texture { 0 };
-	
+
 	int m_width { 0 };
 	int m_height { 0 };
 	uint32_t m_format { GL_RGBA };
+};
+
+CLASS_PTR(CubeTexture)
+class CubeTexture {
+public:
+	static CubeTextureUPtr CreateFromImages(const std::vector<Image*>& images); // 2d texture 6장이니까 벡터배열로 받기
+	~CubeTexture();
+
+	const uint32_t Get() const { return m_texture; }
+	void Bind() const;
+
+private:
+	CubeTexture() {}
+	bool InitFromImages(const std::vector<Image*>& images);  // 마찬가지로 6장의 사진 배열 받기.
+	uint32_t m_texture { 0 };
 };
 
 #endif
