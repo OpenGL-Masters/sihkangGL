@@ -10,6 +10,7 @@
 #include "mesh.h"
 #include "model.h"
 #include "framebuffer.h"
+#include "shadow_map.h"
 
 CLASS_PTR(Context)
 class Context
@@ -22,6 +23,10 @@ public:
 	void MouseMove(double x, double y);
 	void MouseButton(int button, int action, double x, double y);
 
+	void DrawScene(const glm::mat4& view,
+		const glm::mat4& projection,
+		const Program* program);
+
 private:
 	Context() {}
 	bool Init();
@@ -29,6 +34,11 @@ private:
 	ProgramUPtr m_simpleProgram;
 	ProgramUPtr m_textureProgram;
 	ProgramUPtr m_postProgram;
+	ShadowMapUPtr m_shadowMap;
+	ProgramUPtr m_lightingShadowProgram;
+	TextureUPtr m_brickDiffuseTexture;
+	TextureUPtr m_brickNormalTexture;
+	ProgramUPtr m_normalProgram;
 
 	float m_gamma { 1.0f };
 
@@ -41,10 +51,11 @@ private:
 
 	struct Light
 	{
-		glm::vec3 position { glm::vec3(1.0f, 4.0f, 4.0f) };
-		glm::vec3 direction { glm::vec3(-1.0f, -1.0f, -1.0f) };
-		glm::vec2 cutoff { glm::vec2(120.0f, 5.0f) };
-		float distance { 128.0f };
+		bool directional { false };
+		glm::vec3 position { glm::vec3(2.0f, 4.0f, 4.0f) };
+		glm::vec3 direction { glm::vec3(-0.5f, -1.5f, -1.0f) };
+		glm::vec2 cutoff { glm::vec2(50.0f, 5.0f) };
+		float distance { 150.0f };
 		glm::vec3 ambient { glm::vec3(0.1f, 0.1f, 0.1f) };
 		glm::vec3 diffuse { glm::vec3(0.8f ,0.8f, 0.8f ) };
 		glm::vec3 specular { glm::vec3(1.0f, 1.0f, 1.0f) };
@@ -52,6 +63,7 @@ private:
 	Light m_light;
 
 	bool m_flashLightMode { false };
+	bool m_blinn { true };
 
 	// struct Material
 	// {

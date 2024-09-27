@@ -1557,3 +1557,83 @@ MSAA is a more efficient anti-aliasing technique built into OpenGL. It takes mul
 
 
 </details>
+
+<details><summary> # [W12] Blinn-Phong Shading and Shadow Mapping </summary>
+
+### 1. **Blinn-Phong Shading**
+- **Limitation of Phong Lighting Model**:  
+  If the specular shininess value is low, the highlight cuts off abruptly. The boundary of the highlight becomes too sharp, causing sudden darkening.
+
+- When calculating specular reflection, if the angle between the view vector and reflection vector is greater than 90 degrees, the result of their dot product becomes negative, leading to the highlight being cut off.
+
+**Blinn's Proposal**:
+Instead of using the reflection vector, Blinn suggested using the halfway vector, which bisects the angle between the view vector and the light vector. The angle between the halfway vector and the surface normal is used to compute specular highlights.
+
+- **Blinn's Approach**:
+  When the view vector aligns with the reflection vector, the halfway vector will align with the surface normal.  
+  In Blinn's model, the halfway vector is used instead of the reflection vector.
+
+- **How to Compute**:  
+  Use `vec3 halfDir = normalize(lightDir + viewDir)` to compute the specular highlight in the Blinn-Phong model.
+
+### 2. **Shadow Mapping**
+Shadow mapping is a technique to compute shadows by rendering a scene from the light's perspective.
+
+- **Idea**:  
+  Render the scene from the light's point of view to determine which parts of the scene are visible to the light. If a pixel is visible to the light, it is lit; if not, it is in shadow.
+
+- **Steps**:
+  1. First, render the scene from the light's perspective, storing only depth information in a shadow map (using a simple shader that writes only depth values).
+  2. When rendering from the camera's perspective, transform each pixel's position into the light's coordinate system to determine whether the light can "see" that pixel.
+  3. Compare the depth value from the shadow map to the current pixel's depth in the light's view. If the pixel's depth is greater, it is occluded and thus in shadow.
+
+- **Shadow Acne**:  
+  Shadow acne is caused by precision issues during depth comparison. A small **bias** is added to avoid self-shadowing.  
+  However, the bias must be carefully controlled because too large of a bias can lead to **peter panning**, where objects appear to float above their shadows.
+
+- **Angle-based Bias**:  
+  To improve the accuracy of the bias, it can be made proportional to the angle between the light direction and the surface normal:
+  ```cpp
+  float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+  ```
+
+- **PCF (Percentage Closer Filtering)**:  
+  PCF smooths shadows by sampling multiple nearby depth values from the shadow map and averaging them. This reduces hard edges and aliasing in shadows.
+
+- **Shadows for Point Lights (Omni-directional Shadow Map)**:  
+  To calculate shadows for point lights, a cube map is used to represent the six faces of the point light's view, creating an omni-directional shadow map.
+
+### 3. **Normal Mapping**
+Normal mapping is a technique that uses a normal texture to give a more detailed surface appearance by varying the normal direction per pixel. It enhances the realism of rendered objects without increasing geometric complexity.
+
+- **Normal Map**:  
+  The normal values (xyz) are encoded in the RGB channels of the texture (commonly in a bluish tone).
+
+- **Problem**:  
+  Simply using the normals from the texture can cause issues if the geometry is deformed, as the normal map's values might not align with the geometry in world space.
+
+- **Solution**:  
+  To correctly transform normals from the normal map into world space, the tangent space is used. The transformation from tangent space to world space is performed using the TBN matrix (Tangent, Bitangent, Normal), and the normal from the texture is multiplied by the **inverse-transpose** of this matrix to ensure correct shading in world space.
+
+- **Tangent Space Calculation**:  
+  Tangent vectors must be computed for each vertex to form the TBN matrix. Once computed, this matrix is used to transform the normal map’s normals into world space for accurate lighting calculations.
+
+---
+
+### 1. Translation and Fixes:
+#### Blinn-Phong Shading:
+- The translation is mostly correct, but I've smoothed out the phrasing for clarity and naturalness in English.
+
+#### Shadow Mapping:
+- I added a bit more explanation to the steps and adjusted some phrasing for clarity.
+- The PCF and omni-directional shadow map sections were fine but could use slightly more context, which I provided.
+
+#### Normal Mapping:
+- The section about tangent space transformation was a bit light on details. I've added more context on why the TBN matrix is used and how it solves issues with geometry deformation.
+
+### 2. Content Corrections and Additions:
+- I clarified the steps of shadow mapping for easier understanding and added a note on precision issues with shadow acne.
+- I expanded the explanation on omni-directional shadows for point lights and the use of cube maps.
+- In the normal mapping section, I gave more context about the need for tangent space transformation when dealing with deformed geometry and how it helps avoid visual issues.
+
+</details>

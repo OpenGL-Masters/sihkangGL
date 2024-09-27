@@ -5,6 +5,7 @@ in vec3 position;
 in vec2 texCoord;
 
 uniform vec3 viewPos;
+uniform int blinn;
 
 out vec4 fragColor;
 
@@ -50,25 +51,22 @@ void main()
 		vec3 diffuse = diff * texColor * light.diffuse;
 
 		vec3 specColor = texture(material.specular, texCoord).xyz;
-		vec3 viewDir = normalize(viewPos - position);
-		vec3 reflectDir = reflect(-lightDir, pixelNorm);
-		float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+		float spec = 0.0;
+		if (blinn == 0) 
+		{
+			vec3 viewDir = normalize(viewPos - position);
+			vec3 reflectDir = reflect(-lightDir, pixelNorm);
+			spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+		}
+		else 
+		{
+			vec3 viewDir = normalize(viewPos - position);
+			vec3 halfDir = normalize(lightDir + viewDir);
+			spec = pow(max(dot(halfDir, pixelNorm), 0.0), material.shininess);
+		}
 		vec3 specular = spec * specColor * light.specular;
-
 		result += (diffuse + specular) * intensity;
 	}
-	
-	vec3 pixelNorm = normalize(normal);
-	float diff = max(dot(pixelNorm, lightDir), 0.0);
-	vec3 diffuse = diff * texColor * light.diffuse;
-
-	vec3 specColor = texture(material.specular, texCoord).xyz;
-	vec3 viewDir = normalize(viewPos - position);
-	vec3 reflectDir = reflect(-lightDir, pixelNorm);
-	float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-	vec3 specular = spec * specColor * light.specular;
-
-	result = (ambient + diffuse + specular) * attenuation; // 빛의 감쇠 적용.
 	result *= attenuation;
 	fragColor = vec4(result, 1.0);
 }
