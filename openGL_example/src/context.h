@@ -39,7 +39,14 @@ private:
 	TextureUPtr m_brickDiffuseTexture;
 	TextureUPtr m_brickNormalTexture;
 	ProgramUPtr m_normalProgram;
-
+	ProgramUPtr m_deferLightProgram;
+	
+	struct DeferLight {
+		glm::vec3 position;
+		glm::vec3 color;
+	};
+	std::vector<DeferLight> m_deferLights;
+	
 	float m_gamma { 1.0f };
 
 	MeshUPtr m_box;
@@ -100,6 +107,9 @@ private:
 
 	int m_width { WINDOW_WIDTH };
 	int m_height { WINDOW_HEIGHT };
+
+	FramebufferUPtr m_deferGeoFramebuffer;
+  	ProgramUPtr m_deferGeoProgram;
 
 	bool m_cameraControl { false };
 	glm::vec2 m_prevMousePos { glm::vec2(0.0f) };
