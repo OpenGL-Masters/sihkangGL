@@ -1,38 +1,25 @@
-# HDR - Hight Dynamic Range
-기존의 픽셀의 색상값 처리는 1.0을 넘어가는 경우 clamp 처리를 하여 색상값이 0 ~ 1 사이 범위에 존재하게 헀음.
-하지만 실제로는 모니터에서 처리 불가능한 1.0을 넘는 값들이 들어오게 되는 경우들이 있는데 이들에 대한 자연스러운 처리가 안된다는 단점이 존재.
+# SSAO
+Screen-Space Ambient occlusion
+**화면 공간**에서 주변 환경에 의한 **광 차단**(Occlusion)을 계산하는 기술. 
+주로 ambient light이 닿지 않는 곳을 어둡게 표현함.
 
-이에, 일시적으로 1.0 이상의 값도 받아둔 뒤, 색상값을 0 ~ 1 사이 범위로 조정하는 과정을 거치게 한다.
+## 1. **Ambient Occlusion**의 개념
+   - **환경 폐색**(Ambient Occlusion)은 특정 지점 주위에 있는 **기하학적 구조**가 빛의 도달을 **차단하는 정도**를 나타냅니다.
+   - 폐색이 더 많이 발생하는 곳(예: 물체의 모서리, 두 물체가 가까운 지점)은 더 어둡게 표현됩니다.
+   - 이 효과는 주로 전역 조명(Global Illumination)이나 간접 조명에 의해 빛이 덜 도달하는 곳을 나타냅니다.
 
-## tone mapping
-우선 조금 더 자연스러운 rgb처리를 위해서, rgb가 가지는 값 자체를 clamp하지 않고 받아들여야한다.
--> 프레임버퍼 생성 시 기존 `GL_RGBA` 형식으로 8비트 * 4 만큼을 담았던 것에서 `GL_RGBA16F`, `GL_RGBA32F`등으로 저장공간을 넓히기.
-1.0 이상의 데이터를 담기위해 필요함.
+## 2. **화면 공간(Screen Space)**에서의 처리
+   - SSAO는 **3D 공간**에서의 기하학적 데이터를 사용하는 대신, **화면 공간**(Screen Space)에서 계산을 진행합니다.
+   - 이를 위해 **깊이 정보**(Depth Buffer)와 **법선 정보**(Normal Buffer)를 사용하여 각 픽셀의 깊이와 법선을 기준으로 주변 픽셀과 비교하여 폐색을 계산합니다.
+   - 즉, **실시간으로** 카메라 시점에서 보이는 화면의 픽셀들만을 대상으로 **광 차단**을 계산하는 방식입니다.
 
-- Reinhard tone mapping: 담겨진 색상값을 0 ~ 1 사이 범위로 매핑
-`vec3 mapped = hdrColor / (hdrColor + vec3(1.0))`
+## 3. **핵심 과정**
+   1. **G-buffer에서 깊이와 법선 정보 추출**: SSAO는 G-buffer에서 각 픽셀의 **깊이 값**과 **법선 벡터**를 사용합니다.
+   2. **샘플링(Sampling)**: 특정 픽셀 주변의 여러 픽셀을 **무작위로 샘플링**하여 그 픽셀들이 얼마나 서로 가까운지, 그로 인해 광이 차단되는지를 계산합니다.
+   3. **Occlusion 계산**: 샘플링한 픽셀들의 **깊이 값과 법선 벡터**를 비교하여 **빛이 차단되는 정도**를 계산합니다. 즉, 주변 샘플 픽셀들이 현재 픽셀에 비해 깊이 값이 크면 그만큼 광이 차단된다고 간주하고, 해당 픽셀의 **조도를 낮춥니다**.
+   4. **Blur** 및 후처리: Occlusion 값을 계산한 후에는 이를 **블러** 처리하여 부드럽고 자연스러운 어두운 영역을 만듭니다.
 
-- Exposure tone mapping: 노출값을 파라미터로 사용하여 그에 따라 밝기를 조절.
-`vec3 mapped = vec3(1.0) - exp(-hdrColor * exposure)`
-
-# Bloom
-glow effect 후처리 방식.
-기본적으로 렌더링한 화면과 밝기가 1을 넘는 픽셀을 랜더링한 뒤 기본 렌더링 화면에 합산하여 tone mapping 효과를 넣는 식으로 진행.
-이 때 적용하는 블룸효과로는 `Gaussian blur`를 주로 적용
-
-# Deferred shading
-현재까지는 Forward shading 방식으로 그림을 그려왔음.
-light source, object가 많아질수록 성능 저하가 발생.
-
-Forward Shading에서는 모든 광원에 대해 각 물체가 별도로 조명 연산을 수행해야 하므로, 광원이 늘어날수록 연산량이 증가함.
-또한 실제로 렌더링되는 픽셀 중에서 일부는 여러 번 그려질 필요가 없는데도, Forward Shading은 투명도나 그림자 같은 요소에 대해 불필요하게 모든 광원과 물체의 계산을 반복적으로 수행합니다.
-
-이에 조금 더 효율적으로 렌더링하기 위해 `Deferred shading` 방식 도입.
-light 관련된 모든 연산을 기존 순서에서 미루어 마지막 단계에서 수행함.
-
-이를 위해서 우선적으로 `G-buffer`라는 light 계산에 필요한 position, texture data 등을 담아 렌더링할 버퍼를 만할
-이렇게 G-buffer에 담겨져있는 데이터를 기반으로 마지막에 lighting 계산을 진행하게 됨.
-
-G-Buffer는 라이팅 계산을 위한 텍스쳐 뭉치라고 생각하면 됨. (3D world space position, Albedo (= diffuse color, 기본 배색), 3D normal, Specular intensity, Light source position & color, View position vector)
-
-
+## SSAO Sample buffer
+- G-Buffers: Position, Normal, Albedo
+- Sample kernel
+- Random rotation vector

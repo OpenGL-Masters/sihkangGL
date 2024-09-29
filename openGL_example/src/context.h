@@ -41,6 +41,7 @@ private:
 	ProgramUPtr m_normalProgram;
 	ProgramUPtr m_deferLightProgram;
 	
+	
 	struct DeferLight {
 		glm::vec3 position;
 		glm::vec3 color;
@@ -113,6 +114,19 @@ private:
 
 	bool m_cameraControl { false };
 	glm::vec2 m_prevMousePos { glm::vec2(0.0f) };
+
+	FramebufferUPtr m_ssaoFramebuffer;
+	ProgramUPtr m_ssaoProgram;
+	ModelUPtr m_model;
+
+	TextureUPtr m_ssaoNoiseTexture;
+
+	ProgramUPtr m_blurProgram;
+  	FramebufferUPtr m_ssaoBlurFramebuffer;
+
+	std::vector<glm::vec3> m_ssaoSamples;
+  	bool m_useSsao { true };
+	float m_ssaoRadius { 1.0f };
 };
 
 #endif
